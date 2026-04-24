@@ -1,0 +1,22 @@
+namespace SistemaDeGestionDeTicketsAereos.src.modules.customer.Domain.valueObject;
+
+// Value Object para el ID del cliente
+public sealed record CustomerId
+{
+    // El valor entero del ID
+    public int Value { get; }
+
+    // Constructor privado: solo se crea a través del método Create
+    private CustomerId(int value) => Value = value;
+
+    // Valida que el ID no sea negativo
+    public static CustomerId Create(int value)
+    {
+        if (value < 0)
+            throw new ArgumentException("CustomerId must be greater than 0.", nameof(value));
+
+        return new CustomerId(value);
+    }
+
+    public override string ToString() => Value.ToString();
+}
