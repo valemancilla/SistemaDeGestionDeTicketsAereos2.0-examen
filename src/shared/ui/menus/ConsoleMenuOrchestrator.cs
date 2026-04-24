@@ -16,140 +16,139 @@ public static class ConsoleMenuOrchestrator
 {
     public static async Task StartAsync()
     {
-        // Interceptamos Ctrl+C para evitar cierres abruptos. 
+        // Interceptamos Ctrl+C para evitar cierres abruptos.
         Console.CancelKeyPress += (sender, e) =>
         {
-            e.Cancel = true; 
+            e.Cancel = true;
         };
 
-    while (true) // Bucle infinito: mantiene la aplicación corriendo siempre
-    {
-    // Si el usuario NO está autenticado (no ha iniciado sesión)
-        if (!AppState.IsAuthenticated)
+        while (true) // Bucle infinito: mantiene la aplicación corriendo siempre
         {
-        // Muestra el menú de login y espera a que el usuario inicie sesión
-            await new LoginMenu().RunAsync();
-        }
-        else
-        {
-        // Variable que indica si se debe cerrar la aplicación
-            bool exitApp = false;
-        
-        //  Control de acceso basado en el rol del usuario
-            if (AppState.IdUserRole == 1) // Administrador
+            // Si el usuario NO está autenticado (no ha iniciado sesión)
+            if (!AppState.IsAuthenticated)
             {
-            // Muestra el menú principal de administrador
-            // Este método devuelve true si el usuario decide salir
-                exitApp = await ShowAdminMainMenuAsync();
+                // Muestra el menú de login y espera a que el usuario inicie sesión
+                await new LoginMenu().RunAsync();
             }
-            else // Cliente u otros roles 
+            else
             {
-            // Muestra el menú principal de cliente
-                exitApp = await ShowCustomerMainMenuAsync();
+                // Variable que indica si se debe cerrar la aplicación
+                bool exitApp = false;
+
+                // Control de acceso basado en el rol del usuario
+                if (AppState.IdUserRole == 1) // Administrador
+                {
+                    // Muestra el menú principal de administrador; devuelve true si el usuario decide salir
+                    exitApp = await ShowAdminMainMenuAsync();
+                }
+                else // Cliente u otros roles
+                {
+                    // Muestra el menú principal de cliente
+                    exitApp = await ShowCustomerMainMenuAsync();
+                }
+
+                // Si el usuario eligió salir, se rompe el bucle infinito
+                if (exitApp)
+                    break;
             }
-
-        // Si el usuario eligió salir, se rompe el bucle infinito
-        if (exitApp) break;
         }
     }
-    }
 
-   /// <summary>
-/// Muestra el menú principal del administrador.
-/// Retorna true si el usuario decide salir de la aplicación.
-/// </summary>
-private static async Task<bool> ShowAdminMainMenuAsync()
-{
-    // Variable que controla si se debe salir del menú
-    bool exit = false;
-
-    // Bucle que mantiene el menú ejecutándose hasta que el usuario salga
-    while (!exit)
+    /// <summary>
+    /// Muestra el menú principal del administrador.
+    /// Retorna true si el usuario decide salir de la aplicación.
+    /// </summary>
+    private static async Task<bool> ShowAdminMainMenuAsync()
     {
-        // Limpia la consola para mostrar el menú "fresco"
-        Console.Clear();
+        // Variable que controla si se debe salir del menú
+        bool exit = false;
 
-        // Título principal del sistema (con estilo)
-        AnsiConsole.Write(new Rule("[yellow]SISTEMA DE GESTIÓN DE TIQUETES AÉREOS[/]").Centered());
-
-        // Subtítulo indicando que es el menú del administrador
-        AnsiConsole.Write(new Rule("[red]MENÚ PRINCIPAL (ADMINISTRADOR)[/]").Centered());
-
-        // Muestra un menú interactivo donde el usuario selecciona con flechas
-        var option = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("Seleccione una opción utilizando las flechas (Arriba/Abajo) y presione Enter:")
-                .PageSize(12) // Cantidad de opciones visibles antes de hacer scroll
-                .HighlightStyle(new Style(foreground: Color.Red, background: Color.Black)) // Estilo de la opción seleccionada
-                .AddChoices(new[] {
-                    // Orden sugerido de creación/configuración:
-                    // 1) Catálogos base → 2) Aerolíneas/Aeronaves → 3) Aeropuertos/Rutas → 4) Tripulación → 5) Vuelos/Tarifas → 6+) Operación
-                    "1. Administración (Catálogos)",
-                    "2. Gestión de Aerolíneas y Aeronaves",
-                    "3. Gestión de Aeropuertos y Rutas",
-                    "4. Gestión de Tripulación",
-                    "5. Gestión de Vuelos y Tarifas",
-                    "6. Gestión de Clientes",
-                    "7. Gestión de Reservas",
-                    "8. Gestión de Tiquetes y Check-In",
-                    "9. Gestión de Pagos",
-                    "10. Reportes LINQ",
-                    "0. Salir"
-                }));
-
-        // Evalúa la opción que eligió el usuario
-        switch (option)
+        // Bucle que mantiene el menú ejecutándose hasta que el usuario salga
+        while (!exit)
         {
-            case "1. Administración (Catálogos)":
-                await new AdminMenu().RunAsync();
-                break;
+            // Limpia la consola para mostrar el menú "fresco"
+            Console.Clear();
 
-            case "2. Gestión de Aerolíneas y Aeronaves":
-                await new AirlinesMenu().RunAsync();
-                break;
+            // Título principal del sistema (con estilo)
+            AnsiConsole.Write(new Rule("[yellow]SISTEMA DE GESTIÓN DE TIQUETES AÉREOS[/]").Centered());
 
-            case "3. Gestión de Aeropuertos y Rutas":
-                await new AirportsMenu().RunAsync();
-                break;
+            // Subtítulo indicando que es el menú del administrador
+            AnsiConsole.Write(new Rule("[red]MENÚ PRINCIPAL (ADMINISTRADOR)[/]").Centered());
 
-            case "4. Gestión de Tripulación":
-                await new CrewMenu().RunAsync();
-                break;
+            // Muestra un menú interactivo donde el usuario selecciona con flechas
+            var option = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Seleccione una opción utilizando las flechas (Arriba/Abajo) y presione Enter:")
+                    .PageSize(12) // Cantidad de opciones visibles antes de hacer scroll
+                    .HighlightStyle(new Style(foreground: Color.Red, background: Color.Black)) // Estilo de la opción seleccionada
+                    .AddChoices(new[] {
+                        // Orden sugerido de creación/configuración:
+                        // 1) Catálogos base → 2) Aerolíneas/Aeronaves → 3) Aeropuertos/Rutas → 4) Tripulación → 5) Vuelos/Tarifas → 6+) Operación
+                        "1. Administración (Catálogos)",
+                        "2. Gestión de Aerolíneas y Aeronaves",
+                        "3. Gestión de Aeropuertos y Rutas",
+                        "4. Gestión de Tripulación",
+                        "5. Gestión de Vuelos y Tarifas",
+                        "6. Gestión de Clientes",
+                        "7. Gestión de Reservas",
+                        "8. Gestión de Tiquetes y Check-In",
+                        "9. Gestión de Pagos",
+                        "10. Reportes LINQ",
+                        "0. Salir"
+                    }));
 
-            case "5. Gestión de Vuelos y Tarifas":
-                await new FlightsMenu().RunAsync();
-                break;
+            // Evalúa la opción que eligió el usuario
+            switch (option)
+            {
+                case "1. Administración (Catálogos)":
+                    await new AdminMenu().RunAsync();
+                    break;
 
-            case "6. Gestión de Clientes":
-                await new CustomersMenu().RunAsync();
-                break;
+                case "2. Gestión de Aerolíneas y Aeronaves":
+                    await new AirlinesMenu().RunAsync();
+                    break;
 
-            case "7. Gestión de Reservas":
-                await new BookingsMenu().RunAsync();
-                break;
+                case "3. Gestión de Aeropuertos y Rutas":
+                    await new AirportsMenu().RunAsync();
+                    break;
 
-            case "8. Gestión de Tiquetes y Check-In":
-                await new TicketsMenu().RunAsync();
-                break;
+                case "4. Gestión de Tripulación":
+                    await new CrewMenu().RunAsync();
+                    break;
 
-            case "9. Gestión de Pagos":
-                await new PaymentsMenu().RunAsync();
-                break;
+                case "5. Gestión de Vuelos y Tarifas":
+                    await new FlightsMenu().RunAsync();
+                    break;
 
-            case "10. Reportes LINQ":
-                await new ReportsMenu().RunAsync();
-                break;
+                case "6. Gestión de Clientes":
+                    await new CustomersMenu().RunAsync();
+                    break;
 
-            case "0. Salir":
-                // Si el usuario elige salir, retorna true
-                // Esto hará que el programa principal termine
-                return true;
+                case "7. Gestión de Reservas":
+                    await new BookingsMenu().RunAsync();
+                    break;
+
+                case "8. Gestión de Tiquetes y Check-In":
+                    await new TicketsMenu().RunAsync();
+                    break;
+
+                case "9. Gestión de Pagos":
+                    await new PaymentsMenu().RunAsync();
+                    break;
+
+                case "10. Reportes LINQ":
+                    await new ReportsMenu().RunAsync();
+                    break;
+
+                case "0. Salir":
+                    // Si el usuario elige salir, retorna true (termina el programa principal)
+                    return true;
+            }
         }
-    }
 
-    // Este return casi nunca se alcanza, pero es obligatorio por el tipo Task<bool>
-    return false;
-}
+        // Este return casi nunca se alcanza, pero es obligatorio por el tipo Task<bool>
+        return false;
+    }
 
     /// <summary>
     /// Muestra únicamente las funciones de autogestión. Exclusivo para Clientes finales.

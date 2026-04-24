@@ -4,7 +4,7 @@ namespace SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
 /// Clase estática que mantiene el estado global de la aplicación
 /// durante la ejecución (como si fuera una "memoria compartida").
 /// </summary>
-public static class AppState 
+public static class AppState
 {
     /// <summary>
     /// Indica si el usuario ha iniciado sesión o no.
@@ -17,7 +17,7 @@ public static class AppState
     /// Se usa para identificarlo en operaciones (consultas, reservas, etc.).
     /// </summary>
     public static int IdUser { get; set; } = 0;
-    
+
     /// <summary>
     /// Guarda el rol del usuario según la base de datos.
     /// Sirve para restringir acceso a menús o funcionalidades.

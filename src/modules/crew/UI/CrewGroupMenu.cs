@@ -29,7 +29,7 @@ public sealed class CrewGroupMenu
 
             switch (option)
             {
-                case "1. Grupos":   await RunGroupsMenuAsync(ct);  break;
+                case "1. Grupos": await RunGroupsMenuAsync(ct); break;
                 case "2. Miembros": await RunMembersMenuAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
@@ -55,10 +55,10 @@ public sealed class CrewGroupMenu
 
             switch (option)
             {
-                case "1. Crear grupo":      await CreateCrewAsync(ct); break;
-                case "2. Listar grupos":   await ListCrewsAsync(ct);  break;
+                case "1. Crear grupo": await CreateCrewAsync(ct); break;
+                case "2. Listar grupos": await ListCrewsAsync(ct); break;
                 case "3. Actualizar grupo": await UpdateCrewAsync(ct); break;
-                case "4. Eliminar grupo":   await DeleteCrewAsync(ct); break;
+                case "4. Eliminar grupo": await DeleteCrewAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -106,7 +106,7 @@ public sealed class CrewGroupMenu
                 table.AddRow(c.Id.Value.ToString(), Markup.Escape(c.GroupName.Value));
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateCrewAsync(CancellationToken ct)
@@ -131,7 +131,7 @@ public sealed class CrewGroupMenu
             AnsiConsole.MarkupLine($"\n[green]Grupo '[bold]{Markup.Escape(result.GroupName.Value)}[/]' creado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateCrewAsync(CancellationToken ct)
@@ -151,7 +151,7 @@ public sealed class CrewGroupMenu
             AnsiConsole.MarkupLine("\n[green]Grupo actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteCrewAsync(CancellationToken ct)
@@ -172,7 +172,7 @@ public sealed class CrewGroupMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Grupo eliminado correctamente.[/]" : "\n[yellow]No se encontró el grupo con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task ListMembersAsync(CancellationToken ct)
@@ -204,7 +204,7 @@ public sealed class CrewGroupMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task ListMembersByCrewAsync(CancellationToken ct)
@@ -250,7 +250,7 @@ public sealed class CrewGroupMenu
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectCrewAsync(CancellationToken ct)
@@ -315,7 +315,7 @@ public sealed class CrewGroupMenu
             AnsiConsole.MarkupLine($"\n[green]Empleado asignado al grupo con ID de miembro {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteMemberAsync(CancellationToken ct)
@@ -336,6 +336,6 @@ public sealed class CrewGroupMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Miembro eliminado correctamente.[/]" : "\n[yellow]No se encontró el miembro con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

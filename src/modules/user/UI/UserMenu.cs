@@ -23,10 +23,10 @@ public sealed class UserMenu
 
             switch (option)
             {
-                case "1. Crear usuario":      await CreateAsync(ct); break;
-                case "2. Listar usuarios":    await ListAsync(ct);   break;
+                case "1. Crear usuario": await CreateAsync(ct); break;
+                case "2. Listar usuarios": await ListAsync(ct); break;
                 case "3. Actualizar usuario": await UpdateAsync(ct); break;
-                case "4. Eliminar usuario":   await DeleteAsync(ct); break;
+                case "4. Eliminar usuario": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -47,7 +47,7 @@ public sealed class UserMenu
                     u.IdUserRole.ToString(), u.Active ? "[green]Sí[/]" : "[red]No[/]");
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectRoleAsync(CancellationToken ct)
@@ -69,7 +69,7 @@ public sealed class UserMenu
             return;
         var username = AnsiConsole.Ask<string>("Username:");
         var password = AnsiConsole.Prompt(new TextPrompt<string>("Contraseña:").Secret());
-        var confirm  = AnsiConsole.Prompt(new TextPrompt<string>("Confirmar contraseña:").Secret());
+        var confirm = AnsiConsole.Prompt(new TextPrompt<string>("Confirmar contraseña:").Secret());
         if (password != confirm)
         {
             AnsiConsole.MarkupLine("\n[red]Las contraseñas no coinciden.[/]");
@@ -92,7 +92,7 @@ public sealed class UserMenu
             AnsiConsole.MarkupLine($"\n[green]Usuario '[bold]{Markup.Escape(result.Username.Value)}[/]' creado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -115,7 +115,7 @@ public sealed class UserMenu
             AnsiConsole.MarkupLine("\n[green]Usuario actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -136,6 +136,6 @@ public sealed class UserMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Usuario eliminado correctamente.[/]" : "\n[yellow]No se encontró el usuario con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

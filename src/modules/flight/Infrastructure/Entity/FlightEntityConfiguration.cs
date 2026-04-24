@@ -55,6 +55,13 @@ public sealed class FlightEntityConfiguration : IEntityTypeConfiguration<FlightE
             .HasColumnName("ArrivalTime")
             .IsRequired();
 
+        // Puerta de embarque (misma visible en pase y en datos del vuelo)
+        builder.Property(x => x.BoardingGate)
+            .HasColumnName("BoardingGate")
+            .HasColumnType("varchar(20)")
+            .IsRequired()
+            .HasDefaultValue("A01");
+
         // Capacidad total del vuelo, obligatoria
         builder.Property(x => x.TotalCapacity)
             .HasColumnName("TotalCapacity")
@@ -121,6 +128,7 @@ public sealed class FlightEntityConfiguration : IEntityTypeConfiguration<FlightE
                 Date = new DateOnly(2026, 12, 15),
                 DepartureTime = new TimeOnly(8, 30),
                 ArrivalTime = new TimeOnly(14, 45),
+                BoardingGate = "B12",
                 TotalCapacity = 20,
                 AvailableSeats = 20,
                 IdStatus = 1,

@@ -1,23 +1,47 @@
 using System.IO;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
+using Spectre.Console;
 
 try
 {
-    // Verificamos conexión en segundo plano (opcional) o la omitimos del output visual
     using var context = DbContextFactory.Create();
+    if (!AnsiConsole.Profile.Capabilities.Interactive)
+    {
+        var cwd = Directory.GetCurrentDirectory();
+        await Console.Error.WriteLineAsync();
+        await Console.Error.WriteLineAsync("Este programa usa menús interactivos (teclado) con Spectre.Console.");
+        await Console.Error.WriteLineAsync("El terminal actual no informa consola interactiva (pasa al ejecutar desde el panel");
+        await Console.Error.WriteLineAsync("«Run» de algunos editores, o con entrada/salida redirigida).");
+        await Console.Error.WriteLineAsync();
+        await Console.Error.WriteLineAsync("Solución: abrí Windows Terminal, PowerShell o CMD y ejecutá:");
+        await Console.Error.WriteLineAsync($"  cd \"{cwd}\"");
+        await Console.Error.WriteLineAsync("  dotnet run");
+        await Console.Error.WriteLineAsync();
+        return;
+    }
 
-    // Lanzamos el menú visual interactivo
     await ConsoleMenuOrchestrator.StartAsync();
+}
+catch (Exception ex) when (ex is NotSupportedException n && n.Message.Contains("interactive", StringComparison.OrdinalIgnoreCase))
+{
+    await WriteInteractiveConsoleHelpAsync();
 }
 catch (Exception ex)
 {
     try { Console.Clear(); }
-    catch (IOException) { /* consola no interactiva o controlador no válido */ }
+    catch { /* consola no interactiva o controlador no válido */ }
 
-    Console.Error.WriteLine($"Error crítico que detuvo el programa: {ex.Message}");
-    if (ex.InnerException != null)
-    {
-         Console.Error.WriteLine($"Detalle: {ex.InnerException.Message}");
-    }
+    Console.Error.WriteLine("Error crítico que detuvo el programa:");
+    Console.Error.WriteLine(ex.ToString());
+}
+
+static async Task WriteInteractiveConsoleHelpAsync()
+{
+    var cwd = Directory.GetCurrentDirectory();
+    await Console.Error.WriteLineAsync();
+    await Console.Error.WriteLineAsync("Consola no interactiva: no se pueden mostrar los menús.");
+    await Console.Error.WriteLineAsync("Abrí PowerShell/Terminal de Windows, cd a la carpeta del proyecto y: dotnet run");
+    await Console.Error.WriteLineAsync($"Carpeta del proyecto: {cwd}");
+    await Console.Error.WriteLineAsync();
 }

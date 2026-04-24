@@ -37,16 +37,16 @@ public sealed class CountryEntityConfiguration : IEntityTypeConfiguration<Countr
             .HasDatabaseName("UQ_Country_ISOCode");
 
         builder.HasData(
-            new CountryEntity { IdCountry =  1, Name = "Colombia",       ISOCode = "CO" },
-            new CountryEntity { IdCountry =  2, Name = "Venezuela",      ISOCode = "VE" },
-            new CountryEntity { IdCountry =  3, Name = "Ecuador",        ISOCode = "EC" },
-            new CountryEntity { IdCountry =  4, Name = "Perú",           ISOCode = "PE" },
-            new CountryEntity { IdCountry =  5, Name = "Brasil",         ISOCode = "BR" },
-            new CountryEntity { IdCountry =  6, Name = "Argentina",      ISOCode = "AR" },
-            new CountryEntity { IdCountry =  7, Name = "Chile",          ISOCode = "CL" },
-            new CountryEntity { IdCountry =  8, Name = "México",         ISOCode = "MX" },
-            new CountryEntity { IdCountry =  9, Name = "Panamá",         ISOCode = "PA" },
-            new CountryEntity { IdCountry = 10, Name = "España",         ISOCode = "ES" },
+            new CountryEntity { IdCountry = 1, Name = "Colombia", ISOCode = "CO" },
+            new CountryEntity { IdCountry = 2, Name = "Venezuela", ISOCode = "VE" },
+            new CountryEntity { IdCountry = 3, Name = "Ecuador", ISOCode = "EC" },
+            new CountryEntity { IdCountry = 4, Name = "Perú", ISOCode = "PE" },
+            new CountryEntity { IdCountry = 5, Name = "Brasil", ISOCode = "BR" },
+            new CountryEntity { IdCountry = 6, Name = "Argentina", ISOCode = "AR" },
+            new CountryEntity { IdCountry = 7, Name = "Chile", ISOCode = "CL" },
+            new CountryEntity { IdCountry = 8, Name = "México", ISOCode = "MX" },
+            new CountryEntity { IdCountry = 9, Name = "Panamá", ISOCode = "PA" },
+            new CountryEntity { IdCountry = 10, Name = "España", ISOCode = "ES" },
             new CountryEntity { IdCountry = 11, Name = "Estados Unidos", ISOCode = "US" }
         );
     }

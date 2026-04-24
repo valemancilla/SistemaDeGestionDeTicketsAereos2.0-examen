@@ -29,10 +29,10 @@ public sealed class PersonMenu
 
             switch (option)
             {
-                case "1. Crear persona":         await CreateAsync(ct);         break;
-                case "2. Listar personas":      await ListAsync(ct);           break;
-                case "3. Actualizar persona":    await UpdateAsync(ct);         break;
-                case "4. Eliminar persona":      await DeleteAsync(ct);         break;
+                case "1. Crear persona": await CreateAsync(ct); break;
+                case "2. Listar personas": await ListAsync(ct); break;
+                case "3. Actualizar persona": await UpdateAsync(ct); break;
+                case "4. Eliminar persona": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -69,7 +69,7 @@ public sealed class PersonMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectDocumentTypeAsync(CancellationToken ct)
@@ -147,7 +147,7 @@ public sealed class PersonMenu
             AnsiConsole.MarkupLine($"\n[green]Persona '[bold]{Markup.Escape(result.FirstName.Value)} {Markup.Escape(result.LastName.Value)}[/]' creada con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -179,7 +179,7 @@ public sealed class PersonMenu
             AnsiConsole.MarkupLine("\n[green]Persona actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -200,6 +200,6 @@ public sealed class PersonMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Persona eliminada correctamente.[/]" : "\n[yellow]No se encontró la persona con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

@@ -21,10 +21,10 @@ public sealed class GenderMenu
 
             switch (option)
             {
-                case "1. Crear género":     await CreateAsync(ct); break;
-                case "2. Listar géneros":   await ListAsync(ct);   break;
-                case "3. Actualizar género":await UpdateAsync(ct); break;
-                case "4. Eliminar género":  await DeleteAsync(ct); break;
+                case "1. Crear género": await CreateAsync(ct); break;
+                case "2. Listar géneros": await ListAsync(ct); break;
+                case "3. Actualizar género": await UpdateAsync(ct); break;
+                case "4. Eliminar género": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -45,7 +45,7 @@ public sealed class GenderMenu
                 table.AddRow(g.Id.Value.ToString(), Markup.Escape(g.Description.Value));
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateAsync(CancellationToken ct)
@@ -70,7 +70,7 @@ public sealed class GenderMenu
             AnsiConsole.MarkupLine($"\n[green]Género '[bold]{Markup.Escape(result.Description.Value)}[/]' creado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -90,7 +90,7 @@ public sealed class GenderMenu
             AnsiConsole.MarkupLine("\n[green]Género actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -111,6 +111,6 @@ public sealed class GenderMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Género eliminado correctamente.[/]" : "\n[yellow]No se encontró el género con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

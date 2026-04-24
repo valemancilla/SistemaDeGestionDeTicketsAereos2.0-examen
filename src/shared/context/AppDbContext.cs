@@ -13,8 +13,8 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 
-   public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken)
-{
-    return await base.SaveChangesAsync(cancellationToken);
-}
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        return await base.SaveChangesAsync(cancellationToken);
+    }
 }

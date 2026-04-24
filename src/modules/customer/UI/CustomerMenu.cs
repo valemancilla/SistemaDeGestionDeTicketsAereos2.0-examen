@@ -39,12 +39,12 @@ public sealed class CustomerMenu
                                     "5. Gestionar emails", "6. Gestionar teléfonos", "0. Volver"));
                 switch (option)
                 {
-                    case "1. Registrar cliente":   await AdminCreateAsync(ct);  break;
-                    case "2. Listar clientes":     await AdminListAsync(ct);    break;
-                    case "3. Actualizar cliente":  await AdminUpdateAsync(ct);  break;
-                    case "4. Eliminar cliente":    await DeleteAsync(ct);       break;
-                    case "5. Gestionar emails":    await AdminEmailMenuAsync(ct);  break;
-                    case "6. Gestionar teléfonos": await AdminPhoneMenuAsync(ct);  break;
+                    case "1. Registrar cliente": await AdminCreateAsync(ct); break;
+                    case "2. Listar clientes": await AdminListAsync(ct); break;
+                    case "3. Actualizar cliente": await AdminUpdateAsync(ct); break;
+                    case "4. Eliminar cliente": await DeleteAsync(ct); break;
+                    case "5. Gestionar emails": await AdminEmailMenuAsync(ct); break;
+                    case "6. Gestionar teléfonos": await AdminPhoneMenuAsync(ct); break;
                     case "0. Volver": back = true; break;
                 }
             }
@@ -59,9 +59,9 @@ public sealed class CustomerMenu
                                     "3. Actualizar mi teléfono", "0. Volver"));
                 switch (option)
                 {
-                    case "1. Ver mi perfil":         await ViewMyProfileAsync(ct);   break;
-                    case "2. Actualizar mi email":   await UpdateMyEmailAsync(ct);   break;
-                    case "3. Actualizar mi teléfono":await UpdateMyPhoneAsync(ct);   break;
+                    case "1. Ver mi perfil": await ViewMyProfileAsync(ct); break;
+                    case "2. Actualizar mi email": await UpdateMyEmailAsync(ct); break;
+                    case "3. Actualizar mi teléfono": await UpdateMyPhoneAsync(ct); break;
                     case "0. Volver": back = true; break;
                 }
             }
@@ -80,17 +80,17 @@ public sealed class CustomerMenu
         if (AppState.IdPerson is null)
         {
             AnsiConsole.MarkupLine("[yellow]Tu cuenta no tiene un perfil personal asociado. Contacta al administrador.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
 
         try
         {
             using var ctx = DbContextFactory.Create();
             var persons = await new GetAllPersonsUseCase(new PersonRepository(ctx)).ExecuteAsync(ct);
-            var person  = persons.FirstOrDefault(p => p.Id.Value == AppState.IdPerson);
+            var person = persons.FirstOrDefault(p => p.Id.Value == AppState.IdPerson);
 
             var customers = await new GetAllCustomersUseCase(new CustomerRepository(ctx)).ExecuteAsync(ct);
-            var customer  = customers.FirstOrDefault(c => c.IdPerson == AppState.IdPerson);
+            var customer = customers.FirstOrDefault(c => c.IdPerson == AppState.IdPerson);
 
             var emails = await new GetAllCustomerEmailsUseCase(new CustomerEmailRepository(ctx)).ExecuteAsync(ct);
             var myEmail = emails.FirstOrDefault(e => e.IdPerson == AppState.IdPerson);
@@ -99,18 +99,18 @@ public sealed class CustomerMenu
             var myPhone = phones.FirstOrDefault(p => p.IdPerson == AppState.IdPerson);
 
             var docTypes = await new GetAllDocumentTypesUseCase(new DocumentTypeRepository(ctx)).ExecuteAsync(ct);
-            var genders  = await new GetAllGendersUseCase(new GenderRepository(ctx)).ExecuteAsync(ct);
+            var genders = await new GetAllGendersUseCase(new GenderRepository(ctx)).ExecuteAsync(ct);
             var docTypeMap = docTypes.ToDictionary(d => d.Id.Value, d => d.Name.Value);
-            var genderMap  = genders.ToDictionary(g => g.Id.Value, g => g.Description.Value);
+            var genderMap = genders.ToDictionary(g => g.Id.Value, g => g.Description.Value);
 
             if (person is null)
             {
                 AnsiConsole.MarkupLine("[yellow]No se encontró el perfil personal.[/]");
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
             }
 
             var docType = docTypeMap.TryGetValue(person.IdDocumentType, out var dt) ? dt : person.IdDocumentType.ToString();
-            var gender  = genderMap.TryGetValue(person.IdGender, out var gn)         ? gn : person.IdGender.ToString();
+            var gender = genderMap.TryGetValue(person.IdGender, out var gn) ? gn : person.IdGender.ToString();
 
             AnsiConsole.MarkupLine($"  [bold]Nombre:[/]       {Markup.Escape(person.FirstName.Value)} {Markup.Escape(person.LastName.Value)}");
             AnsiConsole.MarkupLine($"  [bold]Documento:[/]    {Markup.Escape(docType)} — {Markup.Escape(person.DocumentNumber.Value)}");
@@ -124,7 +124,7 @@ public sealed class CustomerMenu
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task UpdateMyEmailAsync(CancellationToken ct)
@@ -135,13 +135,13 @@ public sealed class CustomerMenu
         if (AppState.IdPerson is null)
         {
             AnsiConsole.MarkupLine("[yellow]Tu cuenta no tiene perfil asociado. Contacta al administrador.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
 
         try
         {
             using var ctx = DbContextFactory.Create();
-            var emails  = await new GetAllCustomerEmailsUseCase(new CustomerEmailRepository(ctx)).ExecuteAsync(ct);
+            var emails = await new GetAllCustomerEmailsUseCase(new CustomerEmailRepository(ctx)).ExecuteAsync(ct);
             var myEmail = emails.FirstOrDefault(e => e.IdPerson == AppState.IdPerson);
 
             if (myEmail is not null)
@@ -166,7 +166,7 @@ public sealed class CustomerMenu
             }
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateMyPhoneAsync(CancellationToken ct)
@@ -177,13 +177,13 @@ public sealed class CustomerMenu
         if (AppState.IdPerson is null)
         {
             AnsiConsole.MarkupLine("[yellow]Tu cuenta no tiene perfil asociado. Contacta al administrador.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
 
         try
         {
             using var ctx = DbContextFactory.Create();
-            var phones  = await new GetAllCustomerPhonesUseCase(new CustomerPhoneRepository(ctx)).ExecuteAsync(ct);
+            var phones = await new GetAllCustomerPhonesUseCase(new CustomerPhoneRepository(ctx)).ExecuteAsync(ct);
             var myPhone = phones.FirstOrDefault(p => p.IdPerson == AppState.IdPerson);
 
             if (myPhone is not null)
@@ -208,7 +208,7 @@ public sealed class CustomerMenu
             }
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -220,14 +220,14 @@ public sealed class CustomerMenu
         using var ctx = DbContextFactory.Create();
         var customers = (await new GetAllCustomersUseCase(new CustomerRepository(ctx)).ExecuteAsync(ct))
             .OrderBy(c => c.Id.Value).ToList();
-        var persons   = await new GetAllPersonsUseCase(new PersonRepository(ctx)).ExecuteAsync(ct);
-        var emails    = await new GetAllCustomerEmailsUseCase(new CustomerEmailRepository(ctx)).ExecuteAsync(ct);
-        var phones    = await new GetAllCustomerPhonesUseCase(new CustomerPhoneRepository(ctx)).ExecuteAsync(ct);
-        var docTypes  = await new GetAllDocumentTypesUseCase(new DocumentTypeRepository(ctx)).ExecuteAsync(ct);
-        var genders   = await new GetAllGendersUseCase(new GenderRepository(ctx)).ExecuteAsync(ct);
+        var persons = await new GetAllPersonsUseCase(new PersonRepository(ctx)).ExecuteAsync(ct);
+        var emails = await new GetAllCustomerEmailsUseCase(new CustomerEmailRepository(ctx)).ExecuteAsync(ct);
+        var phones = await new GetAllCustomerPhonesUseCase(new CustomerPhoneRepository(ctx)).ExecuteAsync(ct);
+        var docTypes = await new GetAllDocumentTypesUseCase(new DocumentTypeRepository(ctx)).ExecuteAsync(ct);
+        var genders = await new GetAllGendersUseCase(new GenderRepository(ctx)).ExecuteAsync(ct);
         var countries = await new GetAllCountriesUseCase(new CountryRepository(ctx)).ExecuteAsync(ct);
         var docTypeMap = docTypes.ToDictionary(d => d.Id.Value, d => d.Name.Value);
-        var genderMap  = genders.ToDictionary(g => g.Id.Value, g => g.Description.Value);
+        var genderMap = genders.ToDictionary(g => g.Id.Value, g => g.Description.Value);
         var countryMap = countries.ToDictionary(c => c.Id.Value, c => c.Name.Value);
         var personById = persons.ToDictionary(p => p.Id.Value);
 
@@ -242,15 +242,15 @@ public sealed class CustomerMenu
             }
 
             var docType = docTypeMap.TryGetValue(person.IdDocumentType, out var dt) ? dt : person.IdDocumentType.ToString();
-            var gender  = genderMap.TryGetValue(person.IdGender, out var gn) ? gn : person.IdGender.ToString();
+            var gender = genderMap.TryGetValue(person.IdGender, out var gn) ? gn : person.IdGender.ToString();
             var country = countryMap.TryGetValue(person.IdCountry, out var co) ? co : person.IdCountry.ToString();
 
             var emOrdered = emails.Where(e => e.IdPerson == c.IdPerson).OrderBy(e => e.Id.Value).ToList();
             var phOrdered = phones.Where(p => p.IdPerson == c.IdPerson).OrderBy(p => p.Id.Value).ToList();
-            var emailsLine  = emOrdered.Count > 0
+            var emailsLine = emOrdered.Count > 0
                 ? string.Join("; ", emOrdered.Select(e => $"Id [bold]{e.Id.Value}[/]: {Markup.Escape(e.Email.Value)}"))
                 : "[grey]Sin email[/]";
-            var phonesLine  = phOrdered.Count > 0
+            var phonesLine = phOrdered.Count > 0
                 ? string.Join("; ", phOrdered.Select(p => $"Id [bold]{p.Id.Value}[/]: {Markup.Escape(p.Phone.Value)}"))
                 : "[grey]Sin teléfono[/]";
 
@@ -274,7 +274,7 @@ public sealed class CustomerMenu
         AnsiConsole.Write(new Rule("[green]LISTADO DE CLIENTES[/]").Centered());
         AnsiConsole.MarkupLine("[grey]Datos del perfil (persona), contactos y registro en el sistema.[/]\n");
         await WriteAdminCustomerFullDetailListAsync(ct);
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectPersonAsync(CancellationToken ct)
@@ -330,9 +330,9 @@ public sealed class CustomerMenu
         try
         {
             var idPerson = await SelectPersonAsync(ct);
-            var active   = AnsiConsole.Confirm("¿Cliente activo?", true);
-            var hoy      = DateOnly.FromDateTime(DateTime.Today);
-            var regStr   = AnsiConsole.Prompt(
+            var active = AnsiConsole.Confirm("¿Cliente activo?", true);
+            var hoy = DateOnly.FromDateTime(DateTime.Today);
+            var regStr = AnsiConsole.Prompt(
                 new TextPrompt<string>($"Fecha de registro como cliente (yyyy-MM-dd, debe ser [bold]posterior[/] a {hoy:yyyy-MM-dd}):")
                     .DefaultValue(hoy.AddDays(1).ToString("yyyy-MM-dd"))
                     .Validate(s =>
@@ -358,7 +358,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine($"\n[green]Cliente registrado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminUpdateAsync(CancellationToken ct)
@@ -376,15 +376,15 @@ public sealed class CustomerMenu
         {
             using var ctx = DbContextFactory.Create();
             var customer = await new GetCustomerByIdUseCase(new CustomerRepository(ctx)).ExecuteAsync(id, ct);
-            var person   = await new GetPersonByIdUseCase(new PersonRepository(ctx)).ExecuteAsync(customer.IdPerson, ct);
+            var person = await new GetPersonByIdUseCase(new PersonRepository(ctx)).ExecuteAsync(customer.IdPerson, ct);
 
             Console.Clear();
             AnsiConsole.Write(new Rule("[yellow]DATOS A ACTUALIZAR[/]").Centered());
             AnsiConsole.MarkupLine($"[grey]Persona vinculada: Id [bold]{customer.IdPerson}[/].[/]\n");
 
             var firstName = AnsiConsole.Prompt(new TextPrompt<string>("Nombre(s):").DefaultValue(person.FirstName.Value));
-            var lastName  = AnsiConsole.Prompt(new TextPrompt<string>("Apellido(s):").DefaultValue(person.LastName.Value));
-            var birthStr  = AnsiConsole.Prompt(
+            var lastName = AnsiConsole.Prompt(new TextPrompt<string>("Apellido(s):").DefaultValue(person.LastName.Value));
+            var birthStr = AnsiConsole.Prompt(
                 new TextPrompt<string>("Fecha de nacimiento (yyyy-MM-dd):")
                     .DefaultValue(person.BirthDate.Value.ToString("yyyy-MM-dd"))
                     .Validate(s => DateOnly.TryParseExact(s, "yyyy-MM-dd", out _)
@@ -394,7 +394,7 @@ public sealed class CustomerMenu
             var docNumber = AnsiConsole.Prompt(new TextPrompt<string>("Número de documento:").DefaultValue(person.DocumentNumber.Value));
 
             var idDocType = await SelectDocumentTypeAsync(ct);
-            var idGender  = await SelectGenderAsync(ct);
+            var idGender = await SelectGenderAsync(ct);
             var idCountry = await SelectCountryAsync(ct);
 
             var hoy = DateOnly.FromDateTime(DateTime.Today);
@@ -413,7 +413,7 @@ public sealed class CustomerMenu
                         return ValidationResult.Success();
                     }));
             var regDate = DateOnly.ParseExact(regStr, "yyyy-MM-dd");
-            var active  = AnsiConsole.Confirm("¿Cliente activo?", customer.Active);
+            var active = AnsiConsole.Confirm("¿Cliente activo?", customer.Active);
 
             await new UpdatePersonUseCase(new PersonRepository(ctx))
                 .ExecuteAsync(customer.IdPerson, firstName, lastName, birthDate, docNumber, idDocType, idGender, idCountry, person.IdAddress, ct);
@@ -423,7 +423,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine("\n[green]Cliente y datos de persona actualizados correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -444,7 +444,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Cliente eliminado correctamente.[/]" : "\n[yellow]No se encontró el cliente con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -464,9 +464,9 @@ public sealed class CustomerMenu
                     .AddChoices("1. Agregar email", "2. Actualizar email", "3. Eliminar email", "0. Volver"));
             switch (option)
             {
-                case "1. Agregar email":    await AdminCreateEmailAsync(ct);  break;
-                case "2. Actualizar email": await AdminUpdateEmailAsync(ct);  break;
-                case "3. Eliminar email":   await AdminDeleteEmailAsync(ct);  break;
+                case "1. Agregar email": await AdminCreateEmailAsync(ct); break;
+                case "2. Actualizar email": await AdminUpdateEmailAsync(ct); break;
+                case "3. Eliminar email": await AdminDeleteEmailAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -481,7 +481,7 @@ public sealed class CustomerMenu
         try
         {
             var idPerson = await SelectPersonAsync(ct);
-            var email    = AnsiConsole.Ask<string>("Email:");
+            var email = AnsiConsole.Ask<string>("Email:");
             using var ctx = DbContextFactory.Create();
             var result = await new CreateCustomerEmailUseCase(new CustomerEmailRepository(ctx))
                 .ExecuteAsync(email, idPerson, ct);
@@ -496,7 +496,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine($"\n[green]Email registrado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminUpdateEmailAsync(CancellationToken ct)
@@ -519,7 +519,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine("\n[green]Email actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminDeleteEmailAsync(CancellationToken ct)
@@ -538,7 +538,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Email eliminado correctamente.[/]" : "\n[yellow]No se encontró.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -558,9 +558,9 @@ public sealed class CustomerMenu
                     .AddChoices("1. Agregar teléfono", "2. Actualizar teléfono", "3. Eliminar teléfono", "0. Volver"));
             switch (option)
             {
-                case "1. Agregar teléfono":    await AdminCreatePhoneAsync(ct);  break;
-                case "2. Actualizar teléfono": await AdminUpdatePhoneAsync(ct);  break;
-                case "3. Eliminar teléfono":   await AdminDeletePhoneAsync(ct);  break;
+                case "1. Agregar teléfono": await AdminCreatePhoneAsync(ct); break;
+                case "2. Actualizar teléfono": await AdminUpdatePhoneAsync(ct); break;
+                case "3. Eliminar teléfono": await AdminDeletePhoneAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -575,7 +575,7 @@ public sealed class CustomerMenu
         try
         {
             var idPerson = await SelectPersonAsync(ct);
-            var phone    = AnsiConsole.Ask<string>("Teléfono:");
+            var phone = AnsiConsole.Ask<string>("Teléfono:");
             using var ctx = DbContextFactory.Create();
             var result = await new CreateCustomerPhoneUseCase(new CustomerPhoneRepository(ctx))
                 .ExecuteAsync(phone, idPerson, ct);
@@ -590,7 +590,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine($"\n[green]Teléfono registrado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminUpdatePhoneAsync(CancellationToken ct)
@@ -613,7 +613,7 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine("\n[green]Teléfono actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminDeletePhoneAsync(CancellationToken ct)
@@ -632,6 +632,6 @@ public sealed class CustomerMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Teléfono eliminado correctamente.[/]" : "\n[yellow]No se encontró.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

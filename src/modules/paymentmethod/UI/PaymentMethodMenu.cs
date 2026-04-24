@@ -21,10 +21,10 @@ public sealed class PaymentMethodMenu
 
             switch (option)
             {
-                case "1. Crear método":      await CreateAsync(ct); break;
-                case "2. Listar métodos":    await ListAsync(ct);   break;
+                case "1. Crear método": await CreateAsync(ct); break;
+                case "2. Listar métodos": await ListAsync(ct); break;
                 case "3. Actualizar método": await UpdateAsync(ct); break;
-                case "4. Eliminar método":   await DeleteAsync(ct); break;
+                case "4. Eliminar método": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -44,7 +44,7 @@ public sealed class PaymentMethodMenu
                 table.AddRow(p.Id.Value.ToString(), Markup.Escape(p.Name.Value));
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateAsync(CancellationToken ct)
@@ -69,7 +69,7 @@ public sealed class PaymentMethodMenu
             AnsiConsole.MarkupLine($"\n[green]Método '[bold]{Markup.Escape(result.Name.Value)}[/]' creado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -89,7 +89,7 @@ public sealed class PaymentMethodMenu
             AnsiConsole.MarkupLine("\n[green]Método de pago actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -110,6 +110,6 @@ public sealed class PaymentMethodMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Método eliminado correctamente.[/]" : "\n[yellow]No se encontró el método con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

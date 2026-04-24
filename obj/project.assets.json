@@ -2909,11 +2909,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\ASUS\\Documents\\PROGRAMACION\\C#\\CSharProjects\\SistemaDeGestionDeTicketsAereos2.0-main\\SistemaDeGestionDeTicketsAereos2.0-main\\SistemaDeGestionDeTicketsAereos.csproj",
+      "projectUniqueName": "C:\\Users\\ASUS\\Documents\\PROGRAMACION\\C#\\CSharProjects\\SistemaDeGestionDeTicketsAereos2.0\\SistemaDeGestionDeTicketsAereos2.0 examen\\SistemaDeGestionDeTicketsAereos.csproj",
       "projectName": "SistemaDeGestionDeTicketsAereos",
-      "projectPath": "C:\\Users\\ASUS\\Documents\\PROGRAMACION\\C#\\CSharProjects\\SistemaDeGestionDeTicketsAereos2.0-main\\SistemaDeGestionDeTicketsAereos2.0-main\\SistemaDeGestionDeTicketsAereos.csproj",
+      "projectPath": "C:\\Users\\ASUS\\Documents\\PROGRAMACION\\C#\\CSharProjects\\SistemaDeGestionDeTicketsAereos2.0\\SistemaDeGestionDeTicketsAereos2.0 examen\\SistemaDeGestionDeTicketsAereos.csproj",
       "packagesPath": "C:\\Users\\ASUS\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\ASUS\\Documents\\PROGRAMACION\\C#\\CSharProjects\\SistemaDeGestionDeTicketsAereos2.0-main\\SistemaDeGestionDeTicketsAereos2.0-main\\obj\\",
+      "outputPath": "C:\\Users\\ASUS\\Documents\\PROGRAMACION\\C#\\CSharProjects\\SistemaDeGestionDeTicketsAereos2.0\\SistemaDeGestionDeTicketsAereos2.0 examen\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\ASUS\\AppData\\Roaming\\NuGet\\NuGet.Config"

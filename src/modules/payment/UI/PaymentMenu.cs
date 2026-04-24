@@ -14,6 +14,7 @@ using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Application.UseCa
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
 using Spectre.Console;
@@ -54,9 +55,9 @@ public sealed class PaymentMenu
             switch (option)
             {
                 case "1. Registrar pago": await CreateAsync(ct); break;
-                case "2. Listar pagos":   await ListAsync(ct);   break;
-                case "3. Actualizar pago":await UpdateAsync(ct); break;
-                case "4. Eliminar pago":  await DeleteAsync(ct); break;
+                case "2. Listar pagos": await ListAsync(ct); break;
+                case "3. Actualizar pago": await UpdateAsync(ct); break;
+                case "4. Eliminar pago": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -75,10 +76,17 @@ public sealed class PaymentMenu
         if (AppState.IdUserRole != 1)
         {
             var myBookingIds = await GetMyBookingIdsAsync(ct);
-            payments = payments.Where(p => myBookingIds.Contains(p.IdBooking)).ToList();
+            var paidBookingIds = await GetMyPaidBookingIdsAsync(context, myBookingIds, ct);
+            payments = payments.Where(p => paidBookingIds.Contains(p.IdBooking)).ToList();
         }
 
-        if (!payments.Any()) { AnsiConsole.MarkupLine("[yellow]No hay pagos registrados.[/]"); }
+        if (!payments.Any())
+        {
+            AnsiConsole.MarkupLine(
+                AppState.IdUserRole != 1
+                    ? "[yellow]No hay pagos asociados a [bold]reservas tuyas ya pagadas[/] (o aún no completaste el pago de la reserva).[/]"
+                    : "[yellow]No hay pagos registrados.[/]");
+        }
         else
         {
             var table = new Table().Border(TableBorder.Rounded);
@@ -95,7 +103,7 @@ public sealed class PaymentMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectBookingAsync(CancellationToken ct)
@@ -135,6 +143,23 @@ public sealed class PaymentMenu
         }
 
         return ids;
+    }
+
+    /// <summary>Reservas vinculadas al cliente cuyo estado de reserva es «Pagada» (compra finalizada).</summary>
+    private static async Task<HashSet<int>> GetMyPaidBookingIdsAsync(AppDbContext context, HashSet<int> myBookingIds, CancellationToken ct)
+    {
+        var statuses = await new GetAllSystemStatusesUseCase(new SystemStatusRepository(context)).ExecuteAsync(ct);
+        var paidStatus = statuses.FirstOrDefault(s =>
+            string.Equals(s.EntityType.Value, BookingEntityType, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(s.Name.Value, BookingStatusPaid, StringComparison.OrdinalIgnoreCase));
+        if (paidStatus is null)
+            return new HashSet<int>();
+
+        var allBookings = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
+        return allBookings
+            .Where(b => b.IdStatus == paidStatus.Id.Value && myBookingIds.Contains(b.Id.Value))
+            .Select(b => b.Id.Value)
+            .ToHashSet();
     }
 
     private static async Task<int> GetStatusIdByNameAsync(string entityType, string statusName, CancellationToken ct)
@@ -278,7 +303,7 @@ public sealed class PaymentMenu
             AnsiConsole.MarkupLine($"\n[green]Pago registrado con ID {createdId} por ${result.Amount.Value:N2}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -323,7 +348,7 @@ public sealed class PaymentMenu
             AnsiConsole.MarkupLine("\n[green]Pago actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -344,6 +369,6 @@ public sealed class PaymentMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Pago eliminado correctamente.[/]" : "\n[yellow]No se encontró el pago con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

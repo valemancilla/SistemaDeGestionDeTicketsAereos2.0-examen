@@ -121,8 +121,7 @@ public sealed class BookingMenu
         }
         if (!skipIntroConfirm && !AnsiConsole.Confirm("¿Deseas crear una reserva para el vuelo seleccionado?", true))
         {
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return (false, 0);
         }
 
@@ -144,8 +143,7 @@ public sealed class BookingMenu
         {
             AnsiConsole.MarkupLine("\n[red]Este vuelo ya no tiene asientos disponibles.[/]");
             AnsiConsole.MarkupLine("[grey]Volvé a buscar vuelos para ver los cupos actualizados.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return (false, 0);
         }
 
@@ -155,8 +153,7 @@ public sealed class BookingMenu
                 $"\n[red]No hay cupo suficiente para las {need} persona(s) de la búsqueda. " +
                 $"Cupo a la venta ahora: {flightForPrompt.AvailableSeats.Value} de {flightForPrompt.TotalCapacity.Value} (venta/capacidad del vuelo).[/]");
             AnsiConsole.MarkupLine("[grey]Elegí otro vuelo o volvé a buscar.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return (false, 0);
         }
 
@@ -212,8 +209,7 @@ public sealed class BookingMenu
                 if (AppState.IdPerson is null)
                 {
                     AnsiConsole.MarkupLine("\n[red]No se puede crear la reserva: tu cuenta no tiene un perfil de persona asociado.[/]");
-                    AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                    Console.ReadKey();
+                    ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                     return (false, 0);
                 }
 
@@ -224,8 +220,7 @@ public sealed class BookingMenu
                     AnsiConsole.MarkupLine(
                         $"\n[red]No se puede crear la reserva: en el mapa del avión solo hay [bold]{freeOnMap}[/] asiento(s) libre(s), pero la reserva es para [bold]{seatCount}[/] persona(s) (un asiento por persona).[/]");
                     AnsiConsole.MarkupLine("[grey]Un administrador debe generar asientos del vuelo (Vuelos / Aeronaves) o liberar cupos.[/]");
-                    AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                    Console.ReadKey();
+                    ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                     return (false, 0);
                 }
 
@@ -249,6 +244,7 @@ public sealed class BookingMenu
                             flight.IdStatus,
                             flight.IdCrew,
                             flight.IdFare,
+                            flight.BoardingGate,
                             ct);
 
                     await context.SaveChangesAsync(ct);
@@ -322,6 +318,7 @@ public sealed class BookingMenu
                         flight.IdStatus,
                         flight.IdCrew,
                         flight.IdFare,
+                        flight.BoardingGate,
                         ct);
 
                 await context.SaveChangesAsync(ct);
@@ -362,8 +359,7 @@ public sealed class BookingMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
         return (savedOk, createdBookingId);
     }
 
@@ -403,6 +399,7 @@ public sealed class BookingMenu
                         flight.IdStatus,
                         flight.IdCrew,
                         flight.IdFare,
+                        flight.BoardingGate,
                         ct);
             }
 
@@ -450,13 +447,13 @@ public sealed class BookingMenu
                                     "6. Cancelar reserva", "7. Eliminar reserva", "0. Volver"));
                 switch (option)
                 {
-                    case "1. Crear reserva":               await CreateAsync(ct);          break;
-                    case "2. Listar reservas":            await ListAsync(ct);            break;
-                    case "3. Actualizar reserva":          await UpdateAsync(ct);          break;
-                    case "4. Agregar pasajero a reserva":  await AddPassengerAsync(ct);    break;
-                    case "5. Registrar cambio de estado":  await AddStatusHistoryAsync(ct);break;
-                    case "6. Cancelar reserva":            await CancelAsync(ct);          break;
-                    case "7. Eliminar reserva":            await DeleteAsync(ct);          break;
+                    case "1. Crear reserva": await CreateAsync(ct); break;
+                    case "2. Listar reservas": await ListAsync(ct); break;
+                    case "3. Actualizar reserva": await UpdateAsync(ct); break;
+                    case "4. Agregar pasajero a reserva": await AddPassengerAsync(ct); break;
+                    case "5. Registrar cambio de estado": await AddStatusHistoryAsync(ct); break;
+                    case "6. Cancelar reserva": await CancelAsync(ct); break;
+                    case "7. Eliminar reserva": await DeleteAsync(ct); break;
                     case "0. Volver": back = true; break;
                 }
             }
@@ -543,7 +540,7 @@ public sealed class BookingMenu
             AnsiConsole.Write(table);
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     /// <summary>Cliente: detalle en paneles de cada reserva propia pagada (solo lectura).</summary>
@@ -655,13 +652,35 @@ public sealed class BookingMenu
     {
         Console.Clear();
         AnsiConsole.Write(new Rule("[green]MIS PAGOS — CONSULTA[/]").Centered());
-        AnsiConsole.MarkupLine("[grey]Solo visualización de pagos asociados a tus reservas.[/]\n");
+        AnsiConsole.MarkupLine(
+            "[grey]Solo movimientos de pago cuya reserva está en estado [bold]Pagada[/] (compra finalizada) y vinculada a tu perfil.[/]\n");
 
         using var context = DbContextFactory.Create();
+        int paidId;
+        try
+        {
+            paidId = await SelectStatusByNameAsync(context, BookingEntityType, BookingStatusPaid, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
+            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla...[/]");
+            Console.ReadKey();
+            return;
+        }
+
         var myIds = await GetMyBookingIdsAsync(ct);
+        var allBookings = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
+        var myPaidBookingIds = allBookings
+            .Where(b => myIds.Contains(b.Id.Value) && b.IdStatus == paidId)
+            .Select(b => b.Id.Value)
+            .ToHashSet();
         var allPayments = await new GetAllPaymentsUseCase(new PaymentRepository(context)).ExecuteAsync(ct);
-        var mine = allPayments.Where(p => myIds.Contains(p.IdBooking)).OrderByDescending(p => p.Date.Value).ToList();
-        var bookings = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
+        var mine = allPayments
+            .Where(p => myPaidBookingIds.Contains(p.IdBooking))
+            .OrderByDescending(p => p.Date.Value)
+            .ToList();
+        var bookings = allBookings;
         var codeByBookingId = bookings.ToDictionary(b => b.Id.Value, b => b.Code.Value);
         var methods = await new GetAllPaymentMethodsUseCase(new PaymentMethodRepository(context)).ExecuteAsync(ct);
         var methodNames = methods.ToDictionary(m => m.Id.Value, m => m.Name.Value);
@@ -670,8 +689,9 @@ public sealed class BookingMenu
 
         if (mine.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]No hay pagos registrados para tus reservas.[/]");
-            AnsiConsole.MarkupLine("[grey]Si aún no pagaste, completá el proceso desde [bold]Buscar vuelos[/] (resumen y pago).[/]");
+            AnsiConsole.MarkupLine(
+                "[yellow]No hay pagos que listar: solo se muestran reservas [bold]ya pagadas[/]. Completá el pago en [bold]Buscar vuelos[/] para ver el movimiento aquí.[/]");
+            AnsiConsole.MarkupLine("[grey]Mientras la reserva no esté [bold]Pagada[/], los intentos de pago no figuran en esta consulta.[/]");
             AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla...[/]");
             Console.ReadKey();
             return;
@@ -958,8 +978,7 @@ public sealed class BookingMenu
         }
         finally
         {
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
         }
     }
 
@@ -1112,8 +1131,7 @@ public sealed class BookingMenu
         }
         finally
         {
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
         }
     }
 
@@ -1633,8 +1651,7 @@ public sealed class BookingMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task<decimal> ComputeBookingPayableRawTotalAsync(AppDbContext context, int bookingId, CancellationToken ct)
@@ -1986,6 +2003,7 @@ public sealed class BookingMenu
                     flight.IdStatus,
                     flight.IdCrew,
                     flight.IdFare,
+                    flight.BoardingGate,
                     ct);
 
             await context.SaveChangesAsync(ct);
@@ -2019,7 +2037,7 @@ public sealed class BookingMenu
                 await AddPassengerAsync(ct, saved.Id.Value);
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -2079,6 +2097,7 @@ public sealed class BookingMenu
                         newFlight.IdStatus,
                         newFlight.IdCrew,
                         newFlight.IdFare,
+                        newFlight.BoardingGate,
                         ct);
             }
             else
@@ -2099,6 +2118,7 @@ public sealed class BookingMenu
                             oldFlight.IdStatus,
                             oldFlight.IdCrew,
                             oldFlight.IdFare,
+                            oldFlight.BoardingGate,
                             ct);
                 }
 
@@ -2121,6 +2141,7 @@ public sealed class BookingMenu
                             newFlight.IdStatus,
                             newFlight.IdCrew,
                             newFlight.IdFare,
+                            newFlight.BoardingGate,
                             ct);
                 }
             }
@@ -2131,7 +2152,7 @@ public sealed class BookingMenu
             AnsiConsole.MarkupLine("\n[green]Reserva actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     /// <summary>Cliente: solo búsqueda por código PNR (no por ID numérico).</summary>
@@ -2218,8 +2239,7 @@ public sealed class BookingMenu
             if (booking.IdStatus == canceledStatusId)
             {
                 AnsiConsole.MarkupLine("\n[yellow]Esta reserva ya está cancelada.[/]");
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 return;
             }
 
@@ -2255,6 +2275,7 @@ public sealed class BookingMenu
                     flight.IdStatus,
                     flight.IdCrew,
                     flight.IdFare,
+                    flight.BoardingGate,
                     ct);
 
             // Liberar asientos asignados en la reserva (SeatFlight.Available = true).
@@ -2264,7 +2285,7 @@ public sealed class BookingMenu
             AnsiConsole.MarkupLine("\n[green]Cancelación registrada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AddPassengerAsync(CancellationToken ct, int? prefilledBookingId = null)
@@ -2321,7 +2342,7 @@ public sealed class BookingMenu
             AnsiConsole.MarkupLine("\n[green]Pasajero agregado a la reserva correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static string FormatSeatLegLongForUi(string? flightLegLabel)
@@ -2667,6 +2688,7 @@ public sealed class BookingMenu
                         flight.IdStatus,
                         flight.IdCrew,
                         flight.IdFare,
+                        flight.BoardingGate,
                         ct);
             }
             else if (!hadSeats && willHoldSeats)
@@ -2688,6 +2710,7 @@ public sealed class BookingMenu
                         flight.IdStatus,
                         flight.IdCrew,
                         flight.IdFare,
+                        flight.BoardingGate,
                         ct);
             }
 
@@ -2713,7 +2736,7 @@ public sealed class BookingMenu
             AnsiConsole.MarkupLine("\n[green]Estado de reserva actualizado (historial + cupos del vuelo).[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -2733,7 +2756,7 @@ public sealed class BookingMenu
             if (booking is null)
             {
                 AnsiConsole.MarkupLine("\n[yellow]No se encontró la reserva con ese ID.[/]");
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 return;
             }
 
@@ -2759,6 +2782,7 @@ public sealed class BookingMenu
                         flight.IdStatus,
                         flight.IdCrew,
                         flight.IdFare,
+                        flight.BoardingGate,
                         ct);
             }
 
@@ -2781,6 +2805,6 @@ public sealed class BookingMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Reserva eliminada correctamente.[/]" : "\n[yellow]No se pudo eliminar la reserva.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

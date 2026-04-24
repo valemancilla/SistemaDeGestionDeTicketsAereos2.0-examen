@@ -21,10 +21,10 @@ public sealed class TimeZoneMenu
 
             switch (option)
             {
-                case "1. Crear zona":      await CreateAsync(ct); break;
-                case "2. Listar zonas":    await ListAsync(ct);   break;
+                case "1. Crear zona": await CreateAsync(ct); break;
+                case "2. Listar zonas": await ListAsync(ct); break;
                 case "3. Actualizar zona": await UpdateAsync(ct); break;
-                case "4. Eliminar zona":   await DeleteAsync(ct); break;
+                case "4. Eliminar zona": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -44,7 +44,7 @@ public sealed class TimeZoneMenu
                 table.AddRow(z.Id.Value.ToString(), Markup.Escape(z.Name.Value), Markup.Escape(z.UTCOffset.Value));
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateAsync(CancellationToken ct)
@@ -70,7 +70,7 @@ public sealed class TimeZoneMenu
             AnsiConsole.MarkupLine($"\n[green]Zona '[bold]{Markup.Escape(result.Name.Value)}[/]' creada con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -91,7 +91,7 @@ public sealed class TimeZoneMenu
             AnsiConsole.MarkupLine("\n[green]Zona horaria actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -112,6 +112,6 @@ public sealed class TimeZoneMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Zona eliminada correctamente.[/]" : "\n[yellow]No se encontró la zona con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

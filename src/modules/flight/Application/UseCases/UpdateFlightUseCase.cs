@@ -9,11 +9,24 @@ public sealed class UpdateFlightUseCase
     private readonly IFlightRepository _repo;
     public UpdateFlightUseCase(IFlightRepository repo) => _repo = repo;
 
-    public async Task<Flight> ExecuteAsync(int id, string number, DateOnly date, TimeOnly departureTime, TimeOnly arrivalTime, int totalCapacity, int availableSeats, int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare, CancellationToken ct = default)
+    public async Task<Flight> ExecuteAsync(int id, string number, DateOnly date, TimeOnly departureTime, TimeOnly arrivalTime, int totalCapacity, int availableSeats, int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare, string? boardingGate, CancellationToken ct = default)
     {
         var existing = await _repo.GetByIdAsync(FlightId.Create(id), ct);
         if (existing is null) throw new KeyNotFoundException($"Flight with id '{id}' was not found.");
-        var updated = Flight.Create(id, number, date, departureTime, arrivalTime, totalCapacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare);
+        var updated = Flight.Create(
+            id,
+            number,
+            date,
+            departureTime,
+            arrivalTime,
+            totalCapacity,
+            availableSeats,
+            idRoute,
+            idAircraft,
+            idStatus,
+            idCrew,
+            idFare,
+            string.IsNullOrWhiteSpace(boardingGate) ? existing.BoardingGate : boardingGate);
         await _repo.UpdateAsync(updated, ct);
         return updated;
     }
