@@ -12,6 +12,9 @@ using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.Application.UseCas
 using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.CheckIn.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.CheckIn.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Domain.aggregate;
+using SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.checkinChannel.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.checkinChannel.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.fare.Application.UseCases;
@@ -19,6 +22,7 @@ using SistemaDeGestionDeTicketsAereos.src.modules.fare.Infrastructure.Repositori
 using SistemaDeGestionDeTicketsAereos.src.modules.seat.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.seat.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Domain.aggregate;
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Domain.valueObject;
@@ -33,10 +37,12 @@ using SistemaDeGestionDeTicketsAereos.src.modules.route.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.route.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.person.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.person.Domain.valueObject;
+using PersonIdVo = SistemaDeGestionDeTicketsAereos.src.modules.person.Domain.valueObject.PersonId;
 using SistemaDeGestionDeTicketsAereos.src.modules.person.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.bookingCancellation.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.bookingCancellation.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Domain.aggregate;
+using System.Globalization;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
@@ -54,6 +60,8 @@ public sealed class TicketMenu
     private const string BookingStatusCanceled = "Cancelada";
     private const string CheckInEntityType = "CheckIn";
     private const string CheckInStatusCompleted = "Completado";
+    private const string TicketStatusCheckInDone = "Check-in realizado";
+    private const string TicketEntityType = "Ticket";
 
     /// <summary>Reserva seleccionada en el módulo admin (opción «Buscar reserva»); requerida para las demás acciones.</summary>
     private static int? _adminModuleBookingId;
@@ -79,13 +87,15 @@ public sealed class TicketMenu
 
                 var option = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
-                        .PageSize(8)
+                        .PageSize(10)
                         .AddChoices(
                             "1. Buscar reserva",
                             "2. Gestionar tiquete",
                             "3. Gestionar equipaje",
-                            "4. Gestión de check-in",
-                            "5. Imprimir pase de abordar",
+                            "4. Realizar check-in (herramientas por reserva en sesión)",
+                            "5. Consultar pase de abordar (reserva en sesión)",
+                            "6. Consultar pasajeros listos para abordar",
+                            "7. Registrar abordaje (tiquete → Abordado, pase → Activo)",
                             "0. Volver"));
                 switch (option)
                 {
@@ -98,11 +108,17 @@ public sealed class TicketMenu
                     case "3. Gestionar equipaje":
                         await AdminGestionarEquipajeAsync(ct);
                         break;
-                    case "4. Gestión de check-in":
+                    case "4. Realizar check-in (herramientas por reserva en sesión)":
                         await AdminGestionCheckInAsync(ct);
                         break;
-                    case "5. Imprimir pase de abordar":
+                    case "5. Consultar pase de abordar (reserva en sesión)":
                         await AdminImprimirPaseAbordarAsync(ct);
+                        break;
+                    case "6. Consultar pasajeros listos para abordar":
+                        await AdminListarPasajerosListosAbordarAsync(ct, listAllFlights: true);
+                        break;
+                    case "7. Registrar abordaje (tiquete → Abordado, pase → Activo)":
+                        await RegisterPassengerBoardingMenu.RunAsync(ct);
                         break;
                     case "0. Volver":
                         _adminModuleBookingId = null;
@@ -112,23 +128,33 @@ public sealed class TicketMenu
             }
             else
             {
+                AnsiConsole.MarkupLine(
+                    "[grey]Menú alineado al enunciado del docente. Opcional: ver mis tiquetes / check-ins.[/]\n");
                 var option = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
-                        .PageSize(5)
+                        .PageSize(8)
                         .AddChoices(
-                            "1. Check-in (PNR + apellido)",
-                            "2. Ver mis tiquetes",
-                            "3. Ver mis check-ins",
+                            "1. Realizar check-in",
+                            "2. Consultar pase de abordar",
+                            "3. Consultar pasajeros listos para abordar",
+                            "4. Ver mis tiquetes",
+                            "5. Ver mis check-ins",
                             "0. Volver"));
                 switch (option)
                 {
-                    case "1. Check-in (PNR + apellido)":
+                    case "1. Realizar check-in":
                         await ClientPnrCheckInMenu.RunAsync(ct);
                         break;
-                    case "2. Ver mis tiquetes":
+                    case "2. Consultar pase de abordar":
+                        await ConsultBoardingPassAsync(ct);
+                        break;
+                    case "3. Consultar pasajeros listos para abordar":
+                        await AdminListarPasajerosListosAbordarAsync(ct, listAllFlights: false);
+                        break;
+                    case "4. Ver mis tiquetes":
                         await ListTicketsAsync(ct);
                         break;
-                    case "3. Ver mis check-ins":
+                    case "5. Ver mis check-ins":
                         await ListCheckInsAsync(ct);
                         break;
                     case "0. Volver": back = true; break;
@@ -216,6 +242,7 @@ public sealed class TicketMenu
     {
         var bookingRepo = new BookingRepository(context);
         var flightRepo = new FlightRepository(context);
+        var bpRepo = new BoardingPassRepository(context);
         var allBookings = await new GetAllBookingsUseCase(bookingRepo).ExecuteAsync(ct);
         var bookingById = allBookings.ToDictionary(b => b.Id.Value);
         var allFlights = await new GetAllFlightsUseCase(flightRepo).ExecuteAsync(ct);
@@ -232,6 +259,25 @@ public sealed class TicketMenu
             var fare = fareMap.TryGetValue(t.IdFare, out var fn) ? fn : t.IdFare.ToString();
             var status = statusMap.TryGetValue(t.IdStatus, out var sn) ? sn : t.IdStatus.ToString();
 
+            var passText = string.Empty;
+            var bp = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(t.Id.Value, ct);
+            if (bp is null)
+            {
+                await TryAddBoardingPassForTicketIfMissingAsync(context, t.Id.Value, null, ct);
+                await context.SaveChangesAsync(ct);
+                bp = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(t.Id.Value, ct);
+            }
+            if (bp is not null)
+            {
+                passText = "\n[bold]Pase de abordar:[/] " + Markup.Escape(bp.Code.Value) +
+                           "  [dim]·[/]  [bold]Puerta:[/] " + Markup.Escape(bp.Gate.Value) +
+                           "  [dim]·[/]  [bold]Hora de abordaje:[/] " + bp.BoardingTime.ToString("yyyy-MM-dd HH:mm");
+            }
+            else
+            {
+                passText = "\n[grey]Pase de abordar: todavía no generado. Hacé [bold]Check-in (PNR + apellido)[/] con reserva [bold]Pagada[/] o usá [bold]Consultar pase de abordar[/].[/]";
+            }
+
             var panel = new Panel(
                     $"[bold]Código de tiquete:[/] {Markup.Escape(t.Code.Value)}\n" +
                     $"[bold]Reserva (PNR):[/] {Markup.Escape(bk.Code.Value)}\n" +
@@ -240,7 +286,8 @@ public sealed class TicketMenu
                     $"[bold]Fecha y hora del vuelo:[/] {fl.Date.Value:yyyy-MM-dd} {fl.DepartureTime.Value:hh\\:mm}\n" +
                     $"[bold]Emitido:[/] {t.IssueDate.Value:yyyy-MM-dd HH:mm}\n" +
                     $"[bold]Tarifa:[/] {Markup.Escape(fare)}\n" +
-                    $"[bold]Estado del tiquete:[/] {Markup.Escape(status)}")
+                    $"[bold]Estado del tiquete:[/] {Markup.Escape(status)}" +
+                    passText)
                 .Header("[cyan]Tu tiquete[/]")
                 .Border(BoxBorder.Rounded);
 
@@ -274,6 +321,7 @@ public sealed class TicketMenu
         var links = await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct);
         var persons = await new GetAllPersonsUseCase(new PersonRepository(context)).ExecuteAsync(ct);
         var personById = persons.ToDictionary(p => p.Id.Value);
+        var bpRepo = new BoardingPassRepository(context);
 
         foreach (var c in checkIns.OrderByDescending(x => x.Date.Value))
         {
@@ -292,6 +340,17 @@ public sealed class TicketMenu
                 : "—";
             var channel = channelMap.TryGetValue(c.IdChannel, out var cn) ? cn : c.IdChannel.ToString();
             var status = statusMap.TryGetValue(c.IdStatus, out var sn) ? sn : c.IdStatus.ToString();
+            var bp = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(ticket.Id.Value, ct);
+            if (bp is null)
+            {
+                await TryAddBoardingPassForTicketIfMissingAsync(
+                    context, ticket.Id.Value, c.IdSeat, ct);
+                await context.SaveChangesAsync(ct);
+                bp = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(ticket.Id.Value, ct);
+            }
+            var paseLine = bp is not null
+                ? $"\n[bold]Pase de abordar:[/] {Markup.Escape(bp.Code.Value)}  [dim]·[/]  [bold]Puerta:[/] {Markup.Escape(bp.Gate.Value)}"
+                : "\n[grey]Pase de abordar: no pudo generarse (revisá reserva pagada y asiento de check-in).[/]";
 
             var panel = new Panel(
                     $"[bold]Pasajero:[/] {Markup.Escape(passenger)}\n" +
@@ -303,7 +362,8 @@ public sealed class TicketMenu
                     $"[bold]Asiento:[/] {Markup.Escape(seatLabel)}\n" +
                     $"[bold]Fecha del check-in:[/] {c.Date.Value:yyyy-MM-dd HH:mm}\n" +
                     $"[bold]Canal:[/] {Markup.Escape(channel)}\n" +
-                    $"[bold]Estado:[/] {Markup.Escape(status)}")
+                    $"[bold]Estado:[/] {Markup.Escape(status)}" +
+                    paseLine)
                 .Header("[green]Check-in registrado[/]")
                 .Border(BoxBorder.Heavy);
 
@@ -345,14 +405,14 @@ public sealed class TicketMenu
         {
             AnsiConsole.MarkupLine(
                 AppState.IdUserRole != 1
-                    ? "[yellow]No tenés tiquetes en reservas pagadas todavía, o no hay coincidencias.[/]"
+                    ? "[yellow]No tenés tiquetes en [bold]reservas pagadas[/]. Completá el pago (Buscar vuelos / Mis reservas) para ver tiquetes y pase de abordar.[/]"
                     : "[yellow]No hay tiquetes registrados.[/]");
         }
         else if (AppState.IdUserRole != 1)
         {
             AnsiConsole.Write(new Rule("[green]MIS TIQUETES[/]").Centered());
             AnsiConsole.MarkupLine(
-                "[grey]Solo se muestran tiquetes de reservas [bold]pagadas[/]. Cada uno aparece en un recuadro con vuelo, ruta y datos útiles.[/]\n");
+                "[grey]Solo tiquetes de [bold]reservas que ya abonaste[/] (estado [bold]Pagada[/]). [bold]Pase de abordar:[/] debajo (tras check-in) o [bold]4. Consultar pase de abordar[/].[/]\n");
             await WriteClientTicketSummaryPanelsAsync(context, tickets, fareMap, statusMap, ct);
         }
         else
@@ -371,7 +431,7 @@ public sealed class TicketMenu
             AnsiConsole.Write(table);
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectFareAsync(CancellationToken ct)
@@ -439,7 +499,7 @@ public sealed class TicketMenu
                 AnsiConsole.MarkupLine($"\n[green]Tiquete '[bold]{Markup.Escape(result.Code.Value)}[/]' emitido correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task TicketStatusAsync(CancellationToken ct)
@@ -465,7 +525,7 @@ public sealed class TicketMenu
             AnsiConsole.MarkupLine("\n[green]Cambio de estado registrado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteTicketAsync(CancellationToken ct)
@@ -485,7 +545,7 @@ public sealed class TicketMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Tiquete eliminado correctamente.[/]" : "\n[yellow]No se encontró el tiquete.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task ListBaggageAsync(CancellationToken ct)
@@ -509,7 +569,7 @@ public sealed class TicketMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectBaggageTypeAsync(CancellationToken ct)
@@ -569,7 +629,7 @@ public sealed class TicketMenu
             AnsiConsole.MarkupLine($"\n[green]Equipaje registrado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteBaggageAsync(CancellationToken ct)
@@ -589,7 +649,7 @@ public sealed class TicketMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Equipaje eliminado correctamente.[/]" : "\n[yellow]No se encontró el equipaje.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task ListCheckInsAsync(CancellationToken ct)
@@ -612,14 +672,14 @@ public sealed class TicketMenu
         {
             AnsiConsole.MarkupLine(
                 AppState.IdUserRole != 1
-                    ? "[yellow]No hay check-ins en tiquetes de reservas pagadas, o todavía no registraste ninguno.[/]"
+                    ? "[yellow]No hay check-ins: solo figuran tiquetes de [bold]reservas pagadas[/], o aún no hiciste el check-in.[/]"
                     : "[yellow]No hay check-ins registrados.[/]");
         }
         else if (AppState.IdUserRole != 1)
         {
             AnsiConsole.Write(new Rule("[green]MIS CHECK-INS[/]").Centered());
             AnsiConsole.MarkupLine(
-                "[grey]Solo check-ins de tiquetes en reservas [bold]pagadas[/]. Mismo estilo de resumen que al confirmar: vuelo, asiento y pasajero.[/]\n");
+                "[grey]Solo en tiquetes de [bold]reservas pagadas[/] (mismo criterio que [bold]Ver mis tiquetes[/]) con [bold]pase de abordar[/] si ya hiciste check-in.[/]\n");
             await WriteClientCheckInSummaryPanelsAsync(context, checkIns, channelMap, statusMap, ct);
         }
         else
@@ -638,7 +698,166 @@ public sealed class TicketMenu
             AnsiConsole.Write(table);
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
+    }
+
+    private static async Task ConsultBoardingPassAsync(CancellationToken ct)
+    {
+        Console.Clear();
+        AnsiConsole.Write(new Rule("[green]CONSULTAR PASE DE ABORDAR[/]").Centered());
+
+        var mode = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Buscar por:")
+                .PageSize(6)
+                .AddChoices("Código del tiquete", "Código del pase", "Documento del cliente", "0. Volver"));
+        if (mode == "0. Volver")
+            return;
+
+        try
+        {
+            using var context = DbContextFactory.Create();
+            var bpRepo = new BoardingPassRepository(context);
+            BoardingPass? bp = null;
+
+            if (mode == "Código del tiquete")
+            {
+                var raw = AnsiConsole.Prompt(new TextPrompt<string>("Código del tiquete:"));
+                var code = (raw ?? string.Empty).Trim().ToUpperInvariant();
+                var ticket = await new TicketRepository(context).GetByCodeAsync(code, ct);
+                if (ticket is not null)
+                {
+                    if (AppState.IdUserRole != 1)
+                    {
+                        var allowed = await GetMyTicketIdsAsync(ct);
+                        if (!allowed.Contains(ticket.Id.Value))
+                        {
+                            AnsiConsole.MarkupLine(
+                                "[yellow]Ese tiquete no está asociado a tu perfil. Usá un código de un tiquete tuyo.[/]");
+                            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
+                            return;
+                        }
+                    }
+                    bp = await new GetBoardingPassByTicketIdUseCase(bpRepo)
+                        .ExecuteAsync(ticket.Id.Value, ct);
+                    if (bp is null)
+                    {
+                        await TryAddBoardingPassForTicketIfMissingAsync(
+                            context, ticket.Id.Value, null, ct);
+                        await context.SaveChangesAsync(ct);
+                        bp = await new GetBoardingPassByTicketIdUseCase(bpRepo)
+                            .ExecuteAsync(ticket.Id.Value, ct);
+                    }
+                }
+            }
+            else if (mode == "Código del pase")
+            {
+                var raw = AnsiConsole.Prompt(new TextPrompt<string>("Código del pase:"));
+                bp = await new GetBoardingPassByCodeUseCase(bpRepo)
+                    .ExecuteAsync(raw, ct);
+            }
+            else
+            {
+                var docInput = AnsiConsole.Prompt(new TextPrompt<string>("Número de documento:"));
+                var normalized = PersonDocumentNumber.Create(docInput.Trim()).Value;
+
+                var personRepo = new PersonRepository(context);
+                var person = await personRepo.GetByDocumentNumberAsync(normalized, ct);
+                if (person is not null)
+                {
+                    if (AppState.IdUserRole != 1)
+                    {
+                        if (AppState.IdPerson is not int sessionPersonId)
+                        {
+                            AnsiConsole.MarkupLine(
+                                "[yellow]Usá [bold]Código de tiquete/pase[/] o completá el perfil: tu cuenta no tiene persona/documento vinculado.[/]");
+                            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
+                            return;
+                        }
+                        if (sessionPersonId != person.Id.Value)
+                        {
+                            AnsiConsole.MarkupLine(
+                                "[yellow]Solo podés buscar pases con el [bold]mismo documento[/] de tu perfil.[/]");
+                            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
+                            return;
+                        }
+                    }
+                    var links = await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct);
+                    var bookingIdSet = new HashSet<int>(links
+                        .Where(l => l.IdPerson == person.Id.Value)
+                        .Select(l => l.IdBooking));
+                    if (AppState.IdPerson is int ap && ap == person.Id.Value)
+                    {
+                        foreach (var l in links.Where(l => l.IdUser == AppState.IdUser))
+                            bookingIdSet.Add(l.IdBooking);
+                    }
+                    var bookingIds = bookingIdSet.ToList();
+
+                    var tickets = await new GetAllTicketsUseCase(new TicketRepository(context)).ExecuteAsync(ct);
+                    var ticketIds = tickets.Where(t => bookingIds.Contains(t.IdBooking)).Select(t => t.Id.Value).Distinct().ToList();
+                    if (AppState.IdUserRole != 1)
+                    {
+                        var owned = await GetMyTicketIdsAsync(ct);
+                        ticketIds = ticketIds.Where(owned.Contains).ToList();
+                    }
+                    var passes = new List<BoardingPass>();
+                    foreach (var tid in ticketIds)
+                    {
+                        var p = await new GetBoardingPassByTicketIdUseCase(bpRepo)
+                            .ExecuteAsync(tid, ct);
+                        if (p is null)
+                        {
+                            await TryAddBoardingPassForTicketIfMissingAsync(context, tid, null, ct);
+                            await context.SaveChangesAsync(ct);
+                            p = await new GetBoardingPassByTicketIdUseCase(bpRepo)
+                                .ExecuteAsync(tid, ct);
+                        }
+                        if (p is not null) passes.Add(p);
+                    }
+
+                    if (passes.Count == 1)
+                        bp = passes[0];
+                    else if (passes.Count > 1)
+                    {
+                        var pick = AnsiConsole.Prompt(
+                            new SelectionPrompt<string>()
+                                .Title("Varios pases encontrados. Elegí uno:")
+                                .PageSize(10)
+                                .AddChoices(passes.Select(p => $"{p.IdTicket}. {p.Code.Value} — asiento {p.IdSeat}")));
+                        var idTicket = int.Parse(pick.Split('.')[0], System.Globalization.CultureInfo.InvariantCulture);
+                        bp = passes.First(p => p.IdTicket == idTicket);
+                    }
+                }
+            }
+
+            if (bp is not null && AppState.IdUserRole != 1)
+            {
+                var myTicketIds = await GetMyTicketIdsAsync(ct);
+                if (!myTicketIds.Contains(bp.IdTicket))
+                {
+                    AnsiConsole.MarkupLine(
+                        "[yellow]Ese pase no corresponde a los tiquetes vinculados a tu perfil.[/]");
+                    ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
+                    return;
+                }
+            }
+
+            if (bp is null)
+            {
+                AnsiConsole.MarkupLine(
+                    "[yellow]No se encontró pase de abordar. Verificá: reserva [bold]Pagada[/], [bold]check-in completado[/] y, si aplica, que el tiquete sea tuyo.[/]");
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
+                return;
+            }
+
+            await WriteBoardingPassDetailPanelAsync(context, bp, ct);
+        }
+        catch (Exception ex)
+        {
+            EntityPersistenceUiFeedback.Write(ex);
+        }
+
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static bool AdminTryRequireBookingInSession(string accion)
@@ -647,8 +866,7 @@ public sealed class TicketMenu
             return true;
         AnsiConsole.MarkupLine(
             $"[yellow]Primero buscá una reserva (menú principal, opción 1) antes de «{Markup.Escape(accion)}».[/]");
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
         return false;
     }
 
@@ -661,6 +879,118 @@ public sealed class TicketMenu
         if (m is null)
             throw new InvalidOperationException($"No existe el estado «{name}» para «{entityType}».");
         return m.Id.Value;
+    }
+
+    private static int ResolveBoardingPassInitialStatusId(IReadOnlyList<SystemStatus> statuses)
+    {
+        int? gen = statuses.FirstOrDefault(s =>
+            string.Equals(s.EntityType.Value, "BoardingPass", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(s.Name.Value, "Generado", StringComparison.OrdinalIgnoreCase))?.Id.Value;
+        if (gen is not null) return gen.Value;
+        int? act = statuses.FirstOrDefault(s =>
+            string.Equals(s.EntityType.Value, "BoardingPass", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(s.Name.Value, "Activo", StringComparison.OrdinalIgnoreCase))?.Id.Value;
+        if (act is not null) return act.Value;
+        throw new InvalidOperationException("No existen estados «Generado»/«Activo» para el tipo «BoardingPass» (revisar semillas).");
+    }
+
+    /// <summary>
+    /// Si aún no hay pase y la reserva está «Pagada» y hay asiento (del check-in o explícito), agrega un BoardingPass al contexto. No hace SaveChanges: el caller persiste.
+    /// Misma lógica que el check-in PNR del cliente: puerta aleatoria, abordaje = salida - 30 min.
+    /// </summary>
+    private static async Task TryAddBoardingPassForTicketIfMissingAsync(
+        AppDbContext context,
+        int idTicket,
+        int? idSeatIfKnown,
+        CancellationToken ct)
+    {
+        var bpRepo = new BoardingPassRepository(context);
+        var hasOne = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(idTicket, ct);
+        if (hasOne is not null)
+            return;
+
+        int idSeat;
+        if (idSeatIfKnown is int s && s > 0)
+            idSeat = s;
+        else
+        {
+            var completedId = await AdminResolveStatusIdAsync(context, CheckInEntityType, CheckInStatusCompleted, ct);
+            var allCi = await new GetAllCheckInsUseCase(new CheckInRepository(context)).ExecuteAsync(ct);
+            var cin = allCi
+                .Where(c => c.IdTicket == idTicket && c.IdStatus == completedId && c.IdSeat > 0)
+                .OrderByDescending(c => c.Date.Value)
+                .FirstOrDefault();
+            if (cin is null)
+                return;
+            idSeat = cin.IdSeat;
+        }
+
+        var ticket = await new GetTicketByIdUseCase(new TicketRepository(context)).ExecuteAsync(idTicket, ct);
+        var booking = await new GetBookingByIdUseCase(new BookingRepository(context)).ExecuteAsync(ticket.IdBooking, ct);
+        var paidId = await AdminResolveStatusIdAsync(context, BookingEntityType, BookingStatusPaid, ct);
+        if (booking.IdStatus != paidId)
+            return;
+
+        var flight = await new GetFlightByIdUseCase(new FlightRepository(context)).ExecuteAsync(booking.IdFlight, ct);
+        var depAt = flight.Date.Value.ToDateTime(flight.DepartureTime.Value);
+        var boardingAt = depAt - TimeSpan.FromMinutes(30);
+        if (boardingAt < DateTime.Now) boardingAt = DateTime.Now;
+
+        var statuses = await new GetAllSystemStatusesUseCase(new SystemStatusRepository(context)).ExecuteAsync(ct);
+        var idBpStatus = ResolveBoardingPassInitialStatusId(statuses);
+
+        var passCode = ($"BP-{Guid.NewGuid():N}").ToUpperInvariant()[..13];
+        var gate = string.IsNullOrWhiteSpace(flight.BoardingGate) ? "A01" : flight.BoardingGate;
+
+        var passenger = await ResolvePassengerNameForTicketSeatAsync(
+            context, ticket.IdBooking, idSeat, ct);
+
+        await new CreateBoardingPassUseCase(bpRepo).ExecuteAsync(
+            passCode, idTicket, idSeat, gate, boardingAt, DateTime.Now, idBpStatus, passenger, ct);
+    }
+
+    private static async Task<string> ResolvePassengerNameForTicketSeatAsync(
+        AppDbContext context, int idBooking, int idSeat, CancellationToken ct)
+    {
+        var links = await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct);
+        var link = links.FirstOrDefault(l => l.IdBooking == idBooking && l.IdSeat == idSeat);
+        if (link is null)
+            return "—";
+        var person = await new PersonRepository(context).GetByIdAsync(PersonIdVo.Create(link.IdPerson), ct);
+        return person is null
+            ? "—"
+            : ($"{person.FirstName.Value} {person.LastName.Value}").Trim();
+    }
+
+    private static async Task WriteBoardingPassDetailPanelAsync(
+        AppDbContext context, BoardingPass bp, CancellationToken ct)
+    {
+        var ticketAgg = await new GetTicketByIdUseCase(new TicketRepository(context)).ExecuteAsync(bp.IdTicket, ct);
+        var booking = await new GetBookingByIdUseCase(new BookingRepository(context)).ExecuteAsync(ticketAgg.IdBooking, ct);
+        var flight = await new GetFlightByIdUseCase(new FlightRepository(context)).ExecuteAsync(booking.IdFlight, ct);
+        var routeLabel = await BuildRouteLabelForFlightAsync(context, flight.IdRoute, ct);
+        var seats = await new GetAllSeatsUseCase(new SeatRepository(context)).ExecuteAsync(ct);
+        var seatLabel = seats.FirstOrDefault(s => s.Id.Value == bp.IdSeat)?.Number.Value ?? bp.IdSeat.ToString();
+
+        var statuses = await new GetAllSystemStatusesUseCase(new SystemStatusRepository(context)).ExecuteAsync(ct);
+        var statusName = statuses.FirstOrDefault(s => s.Id.Value == bp.IdStatus)?.Name.Value ?? bp.IdStatus.ToString();
+
+        var paxLine = string.IsNullOrWhiteSpace(bp.PassengerFullName)
+            ? string.Empty
+            : $"[bold]Pasajero:[/] {Markup.Escape(bp.PassengerFullName)}\n";
+
+        AnsiConsole.Write(new Panel(
+                paxLine +
+                $"[bold]Código del pase:[/] {Markup.Escape(bp.Code.Value)}\n" +
+                $"[bold]Tiquete:[/] {Markup.Escape(ticketAgg.Code.Value)}\n" +
+                $"[bold]Vuelo:[/] {Markup.Escape(flight.Number.Value)}\n" +
+                $"[bold]Ruta:[/] {Markup.Escape(routeLabel)}\n" +
+                $"[bold]Asiento:[/] {Markup.Escape(seatLabel)}\n" +
+                $"[bold]Puerta:[/] {Markup.Escape(bp.Gate.Value)}\n" +
+                $"[bold]Hora de abordaje:[/] {bp.BoardingTime:yyyy-MM-dd HH:mm}\n" +
+                $"[bold]Estado:[/] {Markup.Escape(statusName)}")
+            .Header("[green]PASE DE ABORDAR[/]")
+            .Border(BoxBorder.Heavy));
     }
 
     private static async Task AdminBuscarReservaAsync(CancellationToken ct)
@@ -774,8 +1104,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task<Booking?> AdminPickBookingFromListAsync(IReadOnlyList<Booking> matches, CancellationToken ct)
@@ -917,8 +1246,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminModificarTiqueteSesionAsync(CancellationToken ct)
@@ -986,8 +1314,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminCancelarReservaSesionAsync(CancellationToken ct)
@@ -1055,6 +1382,7 @@ public sealed class TicketMenu
                     flight.IdStatus,
                     flight.IdCrew,
                     flight.IdFare,
+                    flight.BoardingGate,
                     ct);
 
             await AdminReleaseSeatFlightsForBookingAsync(context, booking.Id.Value, booking.IdFlight, ct);
@@ -1067,8 +1395,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminReleaseSeatFlightsForBookingAsync(AppDbContext context, int idBooking, int idFlight, CancellationToken ct)
@@ -1132,8 +1459,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminGestionarEquipajeAsync(CancellationToken ct)
@@ -1228,8 +1554,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminModificarEquipajeSesionAsync(CancellationToken ct)
@@ -1287,8 +1612,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminConsultarEquipajeSesionAsync(CancellationToken ct)
@@ -1332,20 +1656,22 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminGestionCheckInAsync(CancellationToken ct)
     {
-        if (!AdminTryRequireBookingInSession("Gestión de check-in"))
+        if (!AdminTryRequireBookingInSession("Realizar check-in"))
             return;
 
         bool subBack = false;
         while (!subBack)
         {
             Console.Clear();
-            AnsiConsole.Write(new Rule("[cyan]GESTIÓN DE CHECK-IN[/]").Centered());
+            AnsiConsole.Write(new Rule("[cyan]HERRAMIENTAS DE CHECK-IN (RESERVA EN SESIÓN)[/]").Centered());
+            AnsiConsole.MarkupLine(
+                "[dim]Criterio académico: el [bold]check-in[/] y la [bold]generación del pase[/] corresponden al [bold]cliente[/]. " +
+                "Estas herramientas son de apoyo y no reemplazan la regla de negocio.[/]\n");
             AnsiConsole.MarkupLine($"[grey]Reserva en sesión: ID [bold]{_adminModuleBookingId}[/][/]\n");
             var sub = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -1449,15 +1775,16 @@ public sealed class TicketMenu
             await new CreateCheckInUseCase(new CheckInRepository(context))
                 .ExecuteAsync(DateTime.Now, idTicket, idChannel, chosenLink.IdSeat, AppState.IdUser, completedId, ct);
             await context.SaveChangesAsync(ct);
-            AnsiConsole.MarkupLine("[green]Check-in registrado (estado Completado).[/]");
+            AnsiConsole.MarkupLine(
+                "[green]Check-in registrado (estado Completado).[/] " +
+                "[dim]El pase de abordar lo genera el flujo de [bold]check-in del cliente[/].[/]");
         }
         catch (Exception ex)
         {
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminListarCheckInsSesionAsync(CancellationToken ct)
@@ -1510,8 +1837,7 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminRevertirCheckInSesionAsync(CancellationToken ct)
@@ -1552,17 +1878,16 @@ public sealed class TicketMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AdminImprimirPaseAbordarAsync(CancellationToken ct)
     {
-        if (!AdminTryRequireBookingInSession("Imprimir pase de abordar"))
+        if (!AdminTryRequireBookingInSession("Consultar pase de abordar"))
             return;
 
         Console.Clear();
-        const string failMsg = "No se puede generar el pase de abordar. Verifique pago y check-in.";
+        const string failMsg = "No se puede mostrar el pase de abordar. Verifique pago, check-in completado y asiento.";
         try
         {
             using var context = DbContextFactory.Create();
@@ -1604,126 +1929,178 @@ public sealed class TicketMenu
                 chosen = checkIns.First(c => c.Id.Value == idCh);
             }
 
-            var ticket = tickets.First(t => t.Id.Value == chosen.IdTicket);
-            var flight = await new GetFlightByIdUseCase(new FlightRepository(context)).ExecuteAsync(booking.IdFlight, ct);
-            var routeLabel = await BuildRouteLabelForFlightAsync(context, flight.IdRoute, ct);
-            var seats = await new GetAllSeatsUseCase(new SeatRepository(context)).ExecuteAsync(ct);
-            var seatLabel = seats.FirstOrDefault(s => s.Id.Value == chosen.IdSeat)?.Number.Value ?? chosen.IdSeat.ToString();
-            var links = await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct);
-            var link = links.FirstOrDefault(l => l.IdBooking == idBooking && l.IdSeat == chosen.IdSeat);
-            var persons = await new GetAllPersonsUseCase(new PersonRepository(context)).ExecuteAsync(ct);
-            var passenger = "Pasajero";
-            if (link is not null)
+            var bpRepo = new BoardingPassRepository(context);
+            var bp = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(chosen.IdTicket, ct);
+            if (bp is null)
             {
-                var pers = persons.FirstOrDefault(p => p.Id.Value == link.IdPerson);
-                if (pers is not null)
-                    passenger = $"{pers.FirstName.Value} {pers.LastName.Value}".Trim();
+                AnsiConsole.MarkupLine(
+                    "[yellow]No hay pase en el sistema para este tiquete. " +
+                    "El pase se [bold]genera automáticamente[/] cuando el [bold]cliente[/] completa el check-in.[/]");
             }
-
-            var gate = $"{(char)('A' + Random.Shared.Next(0, 3))}{Random.Shared.Next(1, 30):D2}";
-            var group = Random.Shared.Next(1, 9);
-
-            AnsiConsole.WriteLine();
-            AnsiConsole.WriteLine("====================================");
-            AnsiConsole.WriteLine("        PASE DE ABORDAR");
-            AnsiConsole.WriteLine("====================================");
-            AnsiConsole.WriteLine();
-            AnsiConsole.WriteLine($"Pasajero: {passenger}");
-            AnsiConsole.WriteLine($"Código Reserva: {booking.Code.Value}");
-            AnsiConsole.WriteLine($"Vuelo: {flight.Number.Value}");
-            AnsiConsole.WriteLine($"Ruta: {routeLabel}");
-            AnsiConsole.WriteLine($"Fecha: {flight.Date.Value:yyyy-MM-dd}");
-            AnsiConsole.WriteLine($"Hora: {flight.DepartureTime.Value:hh\\:mm}");
-            AnsiConsole.WriteLine($"Asiento: {seatLabel}");
-            AnsiConsole.WriteLine();
-            AnsiConsole.WriteLine($"Puerta: {gate}");
-            AnsiConsole.WriteLine($"Grupo: {group}");
-            AnsiConsole.WriteLine();
-            AnsiConsole.WriteLine("Estado: CHECK-IN COMPLETADO");
-            AnsiConsole.WriteLine("====================================");
+            else
+            {
+                AnsiConsole.WriteLine();
+                await WriteBoardingPassDetailPanelAsync(context, bp, ct);
+            }
         }
         catch (Exception ex)
         {
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
-    private static async Task CreateCheckInAsync(CancellationToken ct)
+    /// <summary>Operación de solo lectura: tiquetes en estado Check-in realizado, con vuelo y pasajero resueltos.</summary>
+    /// <param name="listAllFlights">Admin: listado completo. Cliente: solo vuelos de sus reservas/tiquetes.</param>
+    private static async Task AdminListarPasajerosListosAbordarAsync(
+        CancellationToken ct,
+        bool listAllFlights = true)
     {
         Console.Clear();
-        AnsiConsole.Write(new Rule("[yellow]REALIZAR CHECK-IN[/]").Centered());
-        if (!AnsiConsole.Confirm("¿Deseas realizar check-in?", true))
-            return;
-        var idTicket = AnsiConsole.Prompt(
-            new TextPrompt<int>("ID del tiquete (0 = Volver):")
-                .Validate(v => v >= 0 ? ValidationResult.Success() : ValidationResult.Error("[red]El ID no puede ser negativo[/]")));
-        if (idTicket == 0) return;
+        AnsiConsole.Write(new Rule("[green]CONSULTAR PASAJEROS LISTOS PARA ABORDAR[/]").Centered());
+        AnsiConsole.MarkupLine(
+            "[grey]Solo tiquetes [bold]Check-in realizado[/] y vuelo no cancelado. " +
+            (listAllFlights
+                ? "Vista de operación (todos los vuelos con datos en sistema).[/]\n"
+                : "Solo vuelos en los que [bold]tu sesión[/] tiene tiquetes asociados.[/]\n"));
         try
         {
-            if (AppState.IdUserRole != 1)
-            {
-                var myTicketIds = await GetMyTicketIdsAsync(ct);
-                if (!myTicketIds.Contains(idTicket))
-                    throw new InvalidOperationException("No puedes hacer check-in para un tiquete que no te pertenece.");
-            }
-
-            using var ctx = DbContextFactory.Create();
-
-            // Obtener el vuelo del tiquete para filtrar asientos disponibles
-            var tickets = await new GetAllTicketsUseCase(new TicketRepository(ctx)).ExecuteAsync(ct);
-            var ticket = tickets.FirstOrDefault(t => t.Id.Value == idTicket);
-            if (ticket is null) throw new InvalidOperationException($"No se encontró el tiquete con ID {idTicket}.");
-
-            var bookings = await new GetAllBookingsUseCase(new BookingRepository(ctx)).ExecuteAsync(ct);
-            var booking = bookings.FirstOrDefault(b => b.Id.Value == ticket.IdBooking);
-            if (booking is null) throw new InvalidOperationException("No se encontró la reserva asociada al tiquete.");
-
-            var seatFlights = await new GetAllSeatFlightsUseCase(new SeatFlightRepository(ctx)).ExecuteAsync(ct);
-            var availableSeatIds = seatFlights
-                .Where(sf => sf.IdFlight == booking.IdFlight && sf.Available)
-                .Select(sf => sf.IdSeat)
-                .ToHashSet();
-
-            var allSeats = await new GetAllSeatsUseCase(new SeatRepository(ctx)).ExecuteAsync(ct);
-            var flightSeats = allSeats.Where(s => availableSeatIds.Contains(s.Id.Value)).ToList();
-            if (!flightSeats.Any()) throw new InvalidOperationException("No hay asientos disponibles en el vuelo de este tiquete.");
-
-            var channels = await new GetAllCheckInChannelsUseCase(new CheckInChannelRepository(ctx)).ExecuteAsync(ct);
-            if (!channels.Any()) throw new InvalidOperationException("No hay canales de check-in. Crea uno en Administración.");
-            var selChannel = AnsiConsole.Prompt(
-                new SelectionPrompt<string>().Title("Selecciona el canal:").PageSize(10)
-                    .AddChoices(channels.Select(c => $"{c.Id.Value}. {c.Name.Value}")));
-            var idChannel = int.Parse(selChannel.Split(new char[] { '.' })[0]);
-
-            AnsiConsole.MarkupLine($"[grey]Vuelo: {booking.IdFlight} — {flightSeats.Count} asiento(s) disponible(s)[/]");
-            var selSeat = AnsiConsole.Prompt(
-                new SelectionPrompt<string>().Title("Selecciona el asiento:").PageSize(10)
-                    .AddChoices(flightSeats.Select(s => $"{s.Id.Value}. {s.Number.Value}")));
-            var idSeat = int.Parse(selSeat.Split(new char[] { '.' })[0]);
-
-            var idStatus = await SelectStatusAsync("CheckIn", ct);
             using var context = DbContextFactory.Create();
-            var result = await new CreateCheckInUseCase(new CheckInRepository(context))
-                .ExecuteAsync(DateTime.Now, idTicket, idChannel, idSeat, AppState.IdUser, idStatus, ct);
-            await context.SaveChangesAsync(ct);
+            HashSet<int>? flightScope = null;
+            if (!listAllFlights)
+            {
+                var mine = await GetMyBookingIdsAsync(ct);
+                var allB = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
+                flightScope = allB
+                    .Where(b => mine.Contains(b.Id.Value))
+                    .Select(b => b.IdFlight)
+                    .ToHashSet();
+            }
+            var sts = await new GetAllSystemStatusesUseCase(new SystemStatusRepository(context)).ExecuteAsync(ct);
+            var stCheckIn = sts.FirstOrDefault(s =>
+                string.Equals(s.EntityType.Value, TicketEntityType, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.Name.Value, TicketStatusCheckInDone, StringComparison.OrdinalIgnoreCase));
+            if (stCheckIn is null)
+            {
+                AnsiConsole.MarkupLine(
+                    "[red]No se encontró el estado «Check-in realizado» (Ticket) en el catálogo (SystemStatus / semillas).[/]");
+            }
+            else
+            {
+                var completedInId = await AdminResolveStatusIdAsync(context, CheckInEntityType, CheckInStatusCompleted, ct);
+                var allTickets = (await new GetAllTicketsUseCase(new TicketRepository(context)).ExecuteAsync(ct))
+                    .Where(t => t.IdStatus == stCheckIn.Id.Value)
+                    .ToList();
+                if (allTickets.Count == 0)
+                    AnsiConsole.MarkupLine("[yellow]Ningún tiquete con «Check-in realizado».[/]");
+                else
+                {
+                    var bookings = (await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct))
+                        .ToDictionary(b => b.Id.Value);
+                    var flights = (await new GetAllFlightsUseCase(new FlightRepository(context)).ExecuteAsync(ct))
+                        .ToDictionary(f => f.Id.Value);
+                    var stFlightById = sts.Where(s => string.Equals(s.EntityType.Value, "Flight", StringComparison.OrdinalIgnoreCase))
+                        .ToDictionary(s => s.Id.Value, s => s.Name.Value);
+                    var checkIns = (await new GetAllCheckInsUseCase(new CheckInRepository(context)).ExecuteAsync(ct))
+                        .ToList();
+                    var links = (await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct))
+                        .ToList();
+                    var seatLabels = (await new GetAllSeatsUseCase(new SeatRepository(context)).ExecuteAsync(ct))
+                        .ToDictionary(s => s.Id.Value, s => s.Number.Value);
+                    var personRepo = new PersonRepository(context);
+                    var rows = new List<(string name, string doc, string seat, string tcode, string st, string flStr, DateTime dep, DateTime checkInAt)>();
+                    foreach (var t in allTickets)
+                    {
+                        if (!bookings.TryGetValue(t.IdBooking, out var bk)) continue;
+                        if (flightScope is { } sc && !sc.Contains(bk.IdFlight)) continue;
+                        if (!flights.TryGetValue(bk.IdFlight, out var fl)) continue;
+                        if (stFlightById.TryGetValue(fl.IdStatus, out var sfn) &&
+                            string.Equals(sfn, "Cancelado", StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        var dep = fl.Date.Value.ToDateTime(fl.DepartureTime.Value);
+                        var cin = checkIns
+                            .FirstOrDefault(c => c.IdTicket == t.Id.Value && c.IdStatus == completedInId);
+                        if (cin is null) continue;
+                        var link = links.FirstOrDefault(l => l.IdBooking == t.IdBooking && l.IdSeat == cin.IdSeat);
+                        if (link is null) continue;
+                        var p = await personRepo.GetByIdAsync(PersonIdVo.Create(link.IdPerson), ct);
+                        var pName = p is null ? "—" : ($"{p.FirstName.Value} {p.LastName.Value}").Trim();
+                        var pDoc = p is null ? "—" : p.DocumentNumber.Value;
+                        var seatL = seatLabels.TryGetValue(cin.IdSeat, out var sn) ? sn : cin.IdSeat.ToString(CultureInfo.InvariantCulture);
+                        var routeL = await BuildRouteLabelForFlightAsync(context, fl.IdRoute, ct);
+                        var flStr = $"{fl.Number.Value} · {routeL} · {fl.Date.Value:yyyy-MM-dd} {fl.DepartureTime.Value:hh\\:mm}";
+                        var cinAt = cin.Date.Value;
+                        rows.Add((pName, pDoc, seatL, t.Code.Value, TicketStatusCheckInDone, flStr, dep, cinAt));
+                    }
 
-            var createdId = (await new GetAllCheckInsUseCase(new CheckInRepository(context)).ExecuteAsync(ct))
-                .Where(c =>
-                    c.IdTicket == idTicket &&
-                    c.IdChannel == idChannel &&
-                    c.IdSeat == idSeat &&
-                    c.IdStatus == idStatus &&
-                    c.IdUser == AppState.IdUser)
-                .OrderByDescending(c => c.Id.Value)
-                .Select(c => c.Id.Value)
-                .FirstOrDefault();
+                    if (rows.Count == 0)
+                        AnsiConsole.MarkupLine("[yellow]Nada que listar: revisá check-ins, asientos o vinculo pasajero–reserva.[/]");
+                    else
+                    {
+                        var mode = AnsiConsole.Prompt(
+                            new SelectionPrompt<string>()
+                                .Title("Ordenar por (enunciado: asiento o hora de check-in):")
+                                .AddChoices(
+                                    "Fecha/hora de salida del vuelo",
+                                    "Número de asiento (texto)",
+                                    "Fecha/hora de check-in completado"));
+                        List<(string name, string doc, string seat, string tcode, string st, string flStr, DateTime dep, DateTime checkInAt)> ordered;
+                        if (string.Equals(mode, "Número de asiento (texto)", StringComparison.Ordinal))
+                            ordered = rows.OrderBy(x => x.seat, StringComparer.OrdinalIgnoreCase).ToList();
+                        else if (string.Equals(mode, "Fecha/hora de check-in completado", StringComparison.Ordinal))
+                            ordered = rows.OrderBy(x => x.checkInAt).ToList();
+                        else
+                            ordered = rows.OrderBy(x => x.dep).ToList();
+                        var filtro = AnsiConsole.Prompt(
+                            new SelectionPrompt<string>()
+                                .Title("Filtro:")
+                                .AddChoices("Ver todos", "Elegir vuelo (línea resumida)…"));
+                        if (filtro.StartsWith("Elegir", StringComparison.Ordinal))
+                        {
+                            var claves = ordered.Select(x => x.flStr).Distinct().OrderBy(s => s).ToList();
+                            if (claves.Count > 0)
+                            {
+                                var elegido = AnsiConsole.Prompt(
+                                    new SelectionPrompt<string>()
+                                        .Title("Solo vuelo:")
+                                        .PageSize(12)
+                                        .AddChoices(claves));
+                                ordered = ordered.Where(x => x.flStr == elegido).ToList();
+                            }
+                        }
 
-            AnsiConsole.MarkupLine($"\n[green]Check-in realizado con ID {createdId}.[/]");
+                        if (ordered.Count == 0)
+                            AnsiConsole.MarkupLine("[yellow]Nada que mostrar con el filtro elegido.[/]");
+                        else
+                        {
+                            AnsiConsole.WriteLine();
+                            AnsiConsole.WriteLine("=== PASAJEROS LISTOS PARA ABORDAR ===");
+                            var table = new Table().Border(TableBorder.Rounded);
+                            table.AddColumn("Nombre");
+                            table.AddColumn("Documento");
+                            table.AddColumn("Asiento");
+                            table.AddColumn("Cód. tiquete");
+                            table.AddColumn("Vuelo / ruta / salida");
+                            table.AddColumn("Estado tiquete");
+                            foreach (var r in ordered)
+                            {
+                                table.AddRow(
+                                    Markup.Escape(r.name),
+                                    Markup.Escape(r.doc),
+                                    Markup.Escape(r.seat),
+                                    Markup.Escape(r.tcode),
+                                    Markup.Escape(r.flStr),
+                                    Markup.Escape(r.st));
+                            }
+                            AnsiConsole.Write(table);
+                        }
+                    }
+                }
+            }
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla...[/]");
+        Console.ReadKey();
     }
 }
