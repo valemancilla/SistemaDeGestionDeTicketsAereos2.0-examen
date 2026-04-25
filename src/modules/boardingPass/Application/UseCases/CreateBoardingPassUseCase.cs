@@ -1,3 +1,4 @@
+// EXAMEN 3 — Persiste un nuevo pase de abordar (código, tiquete, asiento, puerta, hora de abordaje, estado, nombre).
 using SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Domain.aggregate;
 using SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Domain.Repositories;
 

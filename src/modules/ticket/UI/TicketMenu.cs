@@ -1,3 +1,9 @@
+// =============================================================================
+// Módulo UI de tiquetes y check-in (admin y cliente).
+// Examen 3: consulta de pase (ConsultBoardingPassAsync + desambiguación PassChoices),
+// listado de pasajeros listos para abordar, registro de abordaje vía RegisterPassengerBoardingMenu,
+// y herramientas admin de check-in manual. Cliente: ClientPnrCheckInMenu para check-in PNR/tiquete.
+// =============================================================================
 using SistemaDeGestionDeTicketsAereos.src.modules.baggage.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.baggage.Domain.valueObject;
 using SistemaDeGestionDeTicketsAereos.src.modules.baggage.Infrastructure.Repositories;

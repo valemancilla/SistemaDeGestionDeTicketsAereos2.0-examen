@@ -1,4 +1,11 @@
-// Flujo de check-in orientado a aerolínea: PNR + apellido, validación de pago, tramos ida/vuelta, asiento, equipaje y pase de abordar.
+// =============================================================================
+// EXAMEN 3 — UI de "Realizar check-in" (cliente).
+// - Entrada: código de tiquete o PNR + apellido del pasajero.
+// - Delegación: ExamCheckInService (PrepareAsync → posible elección de pasajero →
+//   panel de datos → asiento si falta → CompleteAsync).
+// - Salida: pase impreso en consola con estados Generado (BD) y texto de uso Activo.
+// Otros métodos estáticos del archivo conservan utilidades de resúmenes de viaje / legado.
+// =============================================================================
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SistemaDeGestionDeTicketsAereos.src.modules.airport.Application.UseCases;

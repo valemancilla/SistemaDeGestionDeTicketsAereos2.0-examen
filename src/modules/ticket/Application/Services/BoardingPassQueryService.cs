@@ -1,3 +1,10 @@
+// =============================================================================
+// EXAMEN 3 — Consulta de pase de abordar (capa aplicación).
+// - Modos: código de tiquete, código de pase, documento del cliente.
+// - Cliente: solo pases asociados a sus tiquetes de reservas pagadas; documento
+//   debe coincidir con la persona vinculada al perfil cuando aplica.
+// - Si hay varios pases para el mismo documento, devuelve PassChoices para que la UI elija.
+// =============================================================================
 using Microsoft.EntityFrameworkCore;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Infrastructure.Repositories;
@@ -17,7 +24,8 @@ using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
 namespace SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.Services;
 
 /// <summary>
-/// Consulta de pase con reglas de acceso (cliente solo sus tiquetes/documento; admin sin restricción).
+/// Servicio de consulta del pase de abordar (Examen 3).
+/// Administra permisos por rol y desambiguación cuando un documento tiene más de un pase generado.
 /// </summary>
 public sealed class BoardingPassQueryService
 {

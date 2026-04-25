@@ -1,3 +1,9 @@
+// =============================================================================
+// Menú de pagos: altas, bajas, modificaciones y consultas sobre la tabla Payment.
+// Tras registrar o actualizar un pago en estado APROBADO, actualiza la reserva a
+// Pagada (si aplica) y ejecuta TicketIssuanceAfterPaymentService para dejar los
+// tiquetes de esa reserva en estado Emitido (Examen 3 / operación normal).
+// =============================================================================
 using Microsoft.EntityFrameworkCore;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Infrastructure.Entity;

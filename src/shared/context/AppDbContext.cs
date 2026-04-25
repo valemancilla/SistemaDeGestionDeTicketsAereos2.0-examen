@@ -1,3 +1,4 @@
+// Contexto EF Core único: aplica todas las configuraciones del ensamblado (entidades por módulo, MySQL).
 using Microsoft.EntityFrameworkCore;
 
 namespace SistemaDeGestionDeTicketsAereos.src.shared.context;

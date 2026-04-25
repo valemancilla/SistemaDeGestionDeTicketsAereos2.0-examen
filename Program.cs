@@ -1,3 +1,8 @@
+// =============================================================================
+// Punto de entrada de la aplicación de consola.
+// - Comprueba que el terminal sea interactivo (Spectre.Console).
+// - Inicia el bucle de menús (login → administrador o cliente) vía ConsoleMenuOrchestrator.
+// =============================================================================
 using System.IO;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;

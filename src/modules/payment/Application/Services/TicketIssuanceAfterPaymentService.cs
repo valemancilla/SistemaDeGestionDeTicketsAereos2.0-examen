@@ -1,3 +1,8 @@
+// =============================================================================
+// Tras un pago exitoso que deja la reserva lista: promueve tiquetes de "Activo" a "Emitido"
+// para alinear con el flujo del Examen 3 (check-in solo con tiquete emitido).
+// No crea tiquetes nuevos: actualiza los ya asociados a la reserva.
+// =============================================================================
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;

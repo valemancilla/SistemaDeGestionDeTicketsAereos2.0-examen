@@ -1,3 +1,16 @@
+// =============================================================================
+// EXAMEN 3 — Check-in y pase de abordar (reglas de negocio en aplicación).
+//
+// Fases:
+//  1) PrepareAsync: localiza tiquete/reserva/vuelo/pasajero; si hay varios pasajeros
+//     en la reserva devuelve PassengerChoices sin persistir; valida emitido/pagado/
+//     pago aprobado, vuelo (cancelado / vigencia / habilitado), check-in duplicado,
+//     ventana horaria y asientos disponibles; devuelve TicketInfo para la UI.
+//  2) CompleteAsync: opcional cambio de asiento en BookingCustomer y SeatFlight,
+//     crea CheckIn, actualiza tiquete a "Check-in realizado", crea BoardingPass si no existe.
+//
+// La consola (ClientPnrCheckInMenu) solo pide datos y muestra resultados; no contiene reglas.
+// =============================================================================
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SistemaDeGestionDeTicketsAereos.src.modules.airport.Application.UseCases;

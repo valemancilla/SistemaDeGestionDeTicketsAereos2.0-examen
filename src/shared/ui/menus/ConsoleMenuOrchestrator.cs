@@ -1,3 +1,5 @@
+// Orquestador del menú principal: login, menú administrador (catálogos, vuelos, tiquetes/check-in, pagos…)
+// o menú cliente (buscar vuelos, reservas, check-in y tiquetes). Examen 3: acceso vía TicketsMenu / ClientPnrCheckInMenu.
 using SistemaDeGestionDeTicketsAereos.src.modules.admin.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.aeroline.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.airport.UI;
