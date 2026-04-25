@@ -23,11 +23,11 @@ public sealed class AerolineMenu
 
             switch (option)
             {
-                case "1. Crear aerolínea":         await CreateAsync(ct); break;
-                case "2. Listar aerolíneas":      await ListAsync(ct);   break;
-                case "3. Actualizar aerolínea":    await UpdateAsync(ct); break;
-                case "4. Activar / Desactivar":    await ToggleActiveAsync(ct); break;
-                case "5. Eliminar aerolínea":      await DeleteAsync(ct); break;
+                case "1. Crear aerolínea": await CreateAsync(ct); break;
+                case "2. Listar aerolíneas": await ListAsync(ct); break;
+                case "3. Actualizar aerolínea": await UpdateAsync(ct); break;
+                case "4. Activar / Desactivar": await ToggleActiveAsync(ct); break;
+                case "5. Eliminar aerolínea": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -54,7 +54,7 @@ public sealed class AerolineMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectCountryAsync(CancellationToken ct)
@@ -93,7 +93,7 @@ public sealed class AerolineMenu
             AnsiConsole.MarkupLine($"\n[green]Aerolínea '[bold]{Markup.Escape(created.Name.Value)}[/]' ({created.IATACode.Value}) creada con ID {created.Id.Value}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -116,7 +116,7 @@ public sealed class AerolineMenu
             AnsiConsole.MarkupLine("\n[green]Aerolínea actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task ToggleActiveAsync(CancellationToken ct)
@@ -143,7 +143,7 @@ public sealed class AerolineMenu
             AnsiConsole.MarkupLine($"\n[green]Aerolínea '{Markup.Escape(airline.Name.Value)}' ahora está {(newActive ? "ACTIVA" : "INACTIVA")}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -164,6 +164,6 @@ public sealed class AerolineMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Aerolínea eliminada correctamente.[/]" : "\n[yellow]No se encontró la aerolínea con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

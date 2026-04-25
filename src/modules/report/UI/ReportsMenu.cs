@@ -57,21 +57,20 @@ public class ReportsMenu : IModuleUI
             {
                 switch (option)
                 {
-                    case "1. Vuelos con mayor ocupación":      await FlightOccupancyAsync(cancellationToken);   break;
-                    case "2. Vuelos con asientos disponibles": await AvailableFlightsAsync(cancellationToken);  break;
-                    case "3. Ingresos por aerolínea":          await RevenueByAirlineAsync(cancellationToken);  break;
-                    case "4. Reservas por estado":             await BookingsByStatusAsync(cancellationToken);  break;
+                    case "1. Vuelos con mayor ocupación": await FlightOccupancyAsync(cancellationToken); break;
+                    case "2. Vuelos con asientos disponibles": await AvailableFlightsAsync(cancellationToken); break;
+                    case "3. Ingresos por aerolínea": await RevenueByAirlineAsync(cancellationToken); break;
+                    case "4. Reservas por estado": await BookingsByStatusAsync(cancellationToken); break;
                     case "5. Tiquetes emitidos por rango de fechas": await TicketsByDateRangeAsync(cancellationToken); break;
-                    case "6. Clientes con más reservas":       await TopCustomersByBookingsAsync(cancellationToken); break;
-                    case "7. Destinos más solicitados":        await TopDestinationsByBookingsAsync(cancellationToken); break;
+                    case "6. Clientes con más reservas": await TopCustomersByBookingsAsync(cancellationToken); break;
+                    case "7. Destinos más solicitados": await TopDestinationsByBookingsAsync(cancellationToken); break;
                     case "0. Volver": back = true; break;
                 }
             }
             catch (Exception ex)
             {
                 EntityPersistenceUiFeedback.Write(ex);
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             }
         }
     }
@@ -84,8 +83,11 @@ public class ReportsMenu : IModuleUI
         var flights = await new GetAllFlightsUseCase(new FlightRepository(context)).ExecuteAsync(ct);
         var ranked = flights
             .Where(f => f.TotalCapacity.Value > 0)
-            .Select(f => new {
-                f.Id, Number = f.Number.Value, Date = f.Date.Value,
+            .Select(f => new
+            {
+                f.Id,
+                Number = f.Number.Value,
+                Date = f.Date.Value,
                 Occupied = f.TotalCapacity.Value - f.AvailableSeats.Value,
                 Total = f.TotalCapacity.Value,
                 Pct = (f.TotalCapacity.Value - f.AvailableSeats.Value) * 100.0 / f.TotalCapacity.Value
@@ -101,7 +103,7 @@ public class ReportsMenu : IModuleUI
             table.AddRow(Markup.Escape(f.Number), f.Date.ToString("yyyy-MM-dd"),
                 f.Occupied.ToString(), f.Total.ToString(), $"{f.Pct:F1}%");
         AnsiConsole.Write(table);
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task AvailableFlightsAsync(CancellationToken ct)
@@ -130,7 +132,7 @@ public class ReportsMenu : IModuleUI
                     f.AvailableSeats.Value.ToString());
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task RevenueByAirlineAsync(CancellationToken ct)
@@ -138,24 +140,24 @@ public class ReportsMenu : IModuleUI
         Console.Clear();
         AnsiConsole.Write(new Rule("[yellow]INGRESOS POR AEROLÍNEA[/]").Centered());
         using var context = DbContextFactory.Create();
-        var payments  = await new GetAllPaymentsUseCase(new PaymentRepository(context)).ExecuteAsync(ct);
-        var bookings  = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
-        var flights   = await new GetAllFlightsUseCase(new FlightRepository(context)).ExecuteAsync(ct);
+        var payments = await new GetAllPaymentsUseCase(new PaymentRepository(context)).ExecuteAsync(ct);
+        var bookings = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
+        var flights = await new GetAllFlightsUseCase(new FlightRepository(context)).ExecuteAsync(ct);
         var aircrafts = await new GetAllAircraftsUseCase(new AircraftRepository(context)).ExecuteAsync(ct);
-        var airlines  = await new GetAllAerolinesUseCase(new AerolineRepository(context)).ExecuteAsync(ct);
+        var airlines = await new GetAllAerolinesUseCase(new AerolineRepository(context)).ExecuteAsync(ct);
 
         // payment → booking → flight → aircraft → airline
-        var bookingFlightMap    = bookings.ToDictionary(b => b.Id.Value, b => b.IdFlight);
-        var flightAircraftMap   = flights.ToDictionary(f => f.Id.Value, f => f.IdAircraft);
-        var aircraftAirlineMap  = aircrafts.ToDictionary(a => a.Id.Value, a => a.IdAirline);
-        var airlineNameMap      = airlines.ToDictionary(a => a.Id.Value, a => a.Name.Value);
+        var bookingFlightMap = bookings.ToDictionary(b => b.Id.Value, b => b.IdFlight);
+        var flightAircraftMap = flights.ToDictionary(f => f.Id.Value, f => f.IdAircraft);
+        var aircraftAirlineMap = aircrafts.ToDictionary(a => a.Id.Value, a => a.IdAirline);
+        var airlineNameMap = airlines.ToDictionary(a => a.Id.Value, a => a.Name.Value);
 
         var revenue = payments
             .GroupBy(p =>
             {
-                var idFlight   = bookingFlightMap.TryGetValue(p.IdBooking, out var fid)   ? fid  : 0;
-                var idAircraft = flightAircraftMap.TryGetValue(idFlight, out var acid)    ? acid : 0;
-                var idAirline  = aircraftAirlineMap.TryGetValue(idAircraft, out var alid) ? alid : 0;
+                var idFlight = bookingFlightMap.TryGetValue(p.IdBooking, out var fid) ? fid : 0;
+                var idAircraft = flightAircraftMap.TryGetValue(idFlight, out var acid) ? acid : 0;
+                var idAirline = aircraftAirlineMap.TryGetValue(idAircraft, out var alid) ? alid : 0;
                 return idAirline;
             })
             .Select(g => new
@@ -176,7 +178,7 @@ public class ReportsMenu : IModuleUI
             AnsiConsole.Write(table);
             AnsiConsole.MarkupLine($"\n[bold]Total general: {payments.Sum(p => p.Amount.Value):C2}[/]");
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task BookingsByStatusAsync(CancellationToken ct)
@@ -190,7 +192,8 @@ public class ReportsMenu : IModuleUI
 
         var grouped = bookings
             .GroupBy(b => b.IdStatus)
-            .Select(g => new {
+            .Select(g => new
+            {
                 Status = statusMap.TryGetValue(g.Key, out var sn) ? sn : g.Key.ToString(),
                 Count = g.Count()
             })
@@ -207,7 +210,7 @@ public class ReportsMenu : IModuleUI
             AnsiConsole.Write(table);
             AnsiConsole.MarkupLine($"\n[bold]Total reservas: {bookings.Count()}[/]");
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task TicketsByDateRangeAsync(CancellationToken ct)
@@ -241,7 +244,7 @@ public class ReportsMenu : IModuleUI
             AnsiConsole.Write(table);
             AnsiConsole.MarkupLine($"\n[bold]Total tiquetes: {filtered.Count}[/]");
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task TopCustomersByBookingsAsync(CancellationToken ct)
@@ -282,7 +285,7 @@ public class ReportsMenu : IModuleUI
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task TopDestinationsByBookingsAsync(CancellationToken ct)
@@ -334,6 +337,6 @@ public class ReportsMenu : IModuleUI
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 }

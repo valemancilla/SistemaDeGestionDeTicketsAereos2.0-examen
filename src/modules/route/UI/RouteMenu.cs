@@ -25,11 +25,11 @@ public sealed class RouteMenu
 
             switch (option)
             {
-                case "1. Crear ruta":          await CreateAsync(ct);       break;
-                case "2. Listar rutas":       await ListAsync(ct);         break;
-                case "3. Actualizar ruta":     await UpdateAsync(ct);       break;
-                case "4. Activar / Desactivar":await ToggleActiveAsync(ct); break;
-                case "5. Eliminar ruta":       await DeleteAsync(ct);       break;
+                case "1. Crear ruta": await CreateAsync(ct); break;
+                case "2. Listar rutas": await ListAsync(ct); break;
+                case "3. Actualizar ruta": await UpdateAsync(ct); break;
+                case "4. Activar / Desactivar": await ToggleActiveAsync(ct); break;
+                case "5. Eliminar ruta": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -39,7 +39,7 @@ public sealed class RouteMenu
     {
         Console.Clear();
         using var context = DbContextFactory.Create();
-        var routes   = await new GetAllRoutesUseCase(new RouteRepository(context)).ExecuteAsync(ct);
+        var routes = await new GetAllRoutesUseCase(new RouteRepository(context)).ExecuteAsync(ct);
         var airports = await new GetAllAirportsUseCase(new AirportRepository(context)).ExecuteAsync(ct);
         var airportMap = airports.ToDictionary(a => a.Id.Value, a => $"{a.Name.Value} ({a.IATACode.Value})");
 
@@ -52,14 +52,14 @@ public sealed class RouteMenu
             foreach (var r in routes)
             {
                 var origin = airportMap.TryGetValue(r.OriginAirport, out var on) ? on : r.OriginAirport.ToString();
-                var dest   = airportMap.TryGetValue(r.DestinationAirport, out var dn) ? dn : r.DestinationAirport.ToString();
+                var dest = airportMap.TryGetValue(r.DestinationAirport, out var dn) ? dn : r.DestinationAirport.ToString();
                 table.AddRow(r.Id.Value.ToString(), Markup.Escape(origin), Markup.Escape(dest),
                     r.DistanceKm.Value.ToString("F1"), r.EstDuration.Value.ToString("HH:mm"),
                     r.Active ? "[green]Sí[/]" : "[red]No[/]");
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectAirportAsync(string prompt, CancellationToken ct)
@@ -91,9 +91,9 @@ public sealed class RouteMenu
         try
         {
             var idOrigin = await SelectAirportAsync("Selecciona aeropuerto de ORIGEN:", ct);
-            var idDest   = await SelectAirportAsync("Selecciona aeropuerto de DESTINO:", ct);
+            var idDest = await SelectAirportAsync("Selecciona aeropuerto de DESTINO:", ct);
             if (idOrigin == idDest) throw new InvalidOperationException("El aeropuerto de origen y destino no pueden ser el mismo.");
-            var active   = AnsiConsole.Confirm("¿Ruta activa?", true);
+            var active = AnsiConsole.Confirm("¿Ruta activa?", true);
             using var context = DbContextFactory.Create();
             var result = await new CreateRouteUseCase(new RouteRepository(context)).ExecuteAsync(distance, duration, idOrigin, idDest, active, ct);
             await context.SaveChangesAsync(ct);
@@ -111,7 +111,7 @@ public sealed class RouteMenu
             AnsiConsole.MarkupLine($"\n[green]Ruta creada con ID {createdId} ({result.DistanceKm.Value:F1} km, {result.EstDuration.Value:HH:mm}h).[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -134,16 +134,16 @@ public sealed class RouteMenu
         try
         {
             var idOrigin = await SelectAirportAsync("Selecciona aeropuerto de ORIGEN:", ct);
-            var idDest   = await SelectAirportAsync("Selecciona aeropuerto de DESTINO:", ct);
+            var idDest = await SelectAirportAsync("Selecciona aeropuerto de DESTINO:", ct);
             if (idOrigin == idDest) throw new InvalidOperationException("El aeropuerto de origen y destino no pueden ser el mismo.");
-            var active   = AnsiConsole.Confirm("¿Ruta activa?", true);
+            var active = AnsiConsole.Confirm("¿Ruta activa?", true);
             using var context = DbContextFactory.Create();
             await new UpdateRouteUseCase(new RouteRepository(context)).ExecuteAsync(id, distance, duration, idOrigin, idDest, active, ct);
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Ruta actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task ToggleActiveAsync(CancellationToken ct)
@@ -151,7 +151,7 @@ public sealed class RouteMenu
         Console.Clear();
         AnsiConsole.Write(new Rule("[yellow]ACTIVAR / DESACTIVAR RUTA[/]").Centered());
         using var listContext = DbContextFactory.Create();
-        var routes   = await new GetAllRoutesUseCase(new RouteRepository(listContext)).ExecuteAsync(ct);
+        var routes = await new GetAllRoutesUseCase(new RouteRepository(listContext)).ExecuteAsync(ct);
         var airports = await new GetAllAirportsUseCase(new AirportRepository(listContext)).ExecuteAsync(ct);
         var airportMap = airports.ToDictionary(a => a.Id.Value, a => a.IATACode.Value);
 
@@ -177,7 +177,7 @@ public sealed class RouteMenu
             AnsiConsole.MarkupLine($"\n[green]Ruta ahora está {(!route.Active ? "ACTIVA" : "INACTIVA")}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -198,6 +198,6 @@ public sealed class RouteMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Ruta eliminada correctamente.[/]" : "\n[yellow]No se encontró la ruta con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

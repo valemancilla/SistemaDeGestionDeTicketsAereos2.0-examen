@@ -21,10 +21,10 @@ public sealed class SeatClassMenu
 
             switch (option)
             {
-                case "1. Crear clase":      await CreateAsync(ct); break;
-                case "2. Listar clases":    await ListAsync(ct);   break;
+                case "1. Crear clase": await CreateAsync(ct); break;
+                case "2. Listar clases": await ListAsync(ct); break;
                 case "3. Actualizar clase": await UpdateAsync(ct); break;
-                case "4. Eliminar clase":   await DeleteAsync(ct); break;
+                case "4. Eliminar clase": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -44,7 +44,7 @@ public sealed class SeatClassMenu
                 table.AddRow(s.Id.Value.ToString(), Markup.Escape(s.Name.Value));
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateAsync(CancellationToken ct)
@@ -69,7 +69,7 @@ public sealed class SeatClassMenu
             AnsiConsole.MarkupLine($"\n[green]Clase '[bold]{Markup.Escape(result.Name.Value)}[/]' creada con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -89,7 +89,7 @@ public sealed class SeatClassMenu
             AnsiConsole.MarkupLine("\n[green]Clase de asiento actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -110,6 +110,6 @@ public sealed class SeatClassMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Clase eliminada correctamente.[/]" : "\n[yellow]No se encontró la clase con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

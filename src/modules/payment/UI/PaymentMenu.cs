@@ -1,3 +1,9 @@
+// =============================================================================
+// Menú de pagos: altas, bajas, modificaciones y consultas sobre la tabla Payment.
+// Tras registrar o actualizar un pago en estado APROBADO, actualiza la reserva a
+// Pagada (si aplica) y ejecuta TicketIssuanceAfterPaymentService para dejar los
+// tiquetes de esa reserva en estado Emitido (Examen 3 / operación normal).
+// =============================================================================
 using Microsoft.EntityFrameworkCore;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.booking.Infrastructure.Entity;
@@ -14,6 +20,8 @@ using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Application.UseCa
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.payment.Application.Services;
+using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
 using Spectre.Console;
@@ -54,9 +62,9 @@ public sealed class PaymentMenu
             switch (option)
             {
                 case "1. Registrar pago": await CreateAsync(ct); break;
-                case "2. Listar pagos":   await ListAsync(ct);   break;
-                case "3. Actualizar pago":await UpdateAsync(ct); break;
-                case "4. Eliminar pago":  await DeleteAsync(ct); break;
+                case "2. Listar pagos": await ListAsync(ct); break;
+                case "3. Actualizar pago": await UpdateAsync(ct); break;
+                case "4. Eliminar pago": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -75,10 +83,17 @@ public sealed class PaymentMenu
         if (AppState.IdUserRole != 1)
         {
             var myBookingIds = await GetMyBookingIdsAsync(ct);
-            payments = payments.Where(p => myBookingIds.Contains(p.IdBooking)).ToList();
+            var paidBookingIds = await GetMyPaidBookingIdsAsync(context, myBookingIds, ct);
+            payments = payments.Where(p => paidBookingIds.Contains(p.IdBooking)).ToList();
         }
 
-        if (!payments.Any()) { AnsiConsole.MarkupLine("[yellow]No hay pagos registrados.[/]"); }
+        if (!payments.Any())
+        {
+            AnsiConsole.MarkupLine(
+                AppState.IdUserRole != 1
+                    ? "[yellow]No hay pagos asociados a [bold]reservas tuyas ya pagadas[/] (o aún no completaste el pago de la reserva).[/]"
+                    : "[yellow]No hay pagos registrados.[/]");
+        }
         else
         {
             var table = new Table().Border(TableBorder.Rounded);
@@ -95,7 +110,7 @@ public sealed class PaymentMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectBookingAsync(CancellationToken ct)
@@ -137,6 +152,23 @@ public sealed class PaymentMenu
         return ids;
     }
 
+    /// <summary>Reservas vinculadas al cliente cuyo estado de reserva es «Pagada» (compra finalizada).</summary>
+    private static async Task<HashSet<int>> GetMyPaidBookingIdsAsync(AppDbContext context, HashSet<int> myBookingIds, CancellationToken ct)
+    {
+        var statuses = await new GetAllSystemStatusesUseCase(new SystemStatusRepository(context)).ExecuteAsync(ct);
+        var paidStatus = statuses.FirstOrDefault(s =>
+            string.Equals(s.EntityType.Value, BookingEntityType, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(s.Name.Value, BookingStatusPaid, StringComparison.OrdinalIgnoreCase));
+        if (paidStatus is null)
+            return new HashSet<int>();
+
+        var allBookings = await new GetAllBookingsUseCase(new BookingRepository(context)).ExecuteAsync(ct);
+        return allBookings
+            .Where(b => b.IdStatus == paidStatus.Id.Value && myBookingIds.Contains(b.Id.Value))
+            .Select(b => b.Id.Value)
+            .ToHashSet();
+    }
+
     private static async Task<int> GetStatusIdByNameAsync(string entityType, string statusName, CancellationToken ct)
     {
         using var context = DbContextFactory.Create();
@@ -148,6 +180,8 @@ public sealed class PaymentMenu
             throw new InvalidOperationException($"No existe el estado '{statusName}' para '{entityType}'. Revisa SystemStatus (Semillas).");
         return match.Id.Value;
     }
+
+    private static readonly TicketIssuanceAfterPaymentService _ticketIssuance = new();
 
     private static async Task<int> SelectPaymentMethodAsync(CancellationToken ct)
     {
@@ -259,6 +293,9 @@ public sealed class PaymentMenu
                     await new CreateBookingStatusHistoryUseCase(new BookingStatusHistoryRepository(context))
                         .ExecuteAsync(DateTime.Now, historyNote, booking.Id.Value, targetBookingStatusId, AppState.IdUser, ct);
                 }
+
+                // Nuevo: al finalizar pago aprobado, emitir automáticamente los tiquetes de la reserva.
+                await _ticketIssuance.EmitTicketsForBookingAsync(context, idBooking, ct);
             }
 
             await context.SaveChangesAsync(ct);
@@ -278,7 +315,7 @@ public sealed class PaymentMenu
             AnsiConsole.MarkupLine($"\n[green]Pago registrado con ID {createdId} por ${result.Amount.Value:N2}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -319,11 +356,54 @@ public sealed class PaymentMenu
 
             await new UpdatePaymentUseCase(new PaymentRepository(context))
                 .ExecuteAsync(id, amount, DateTime.Now, idBooking, idMethod, idStatus, idTicket, ct);
+
+            // Si el pago queda APROBADO, la reserva pasa a Pagada y se emiten tiquetes automáticamente.
+            var approvedId = await GetStatusIdByNameAsync(PaymentEntityType, PaymentStatusApproved, ct);
+            if (idStatus == approvedId)
+            {
+                var bookingRepo = new BookingRepository(context);
+                var booking = await new GetBookingByIdUseCase(bookingRepo).ExecuteAsync(idBooking, ct);
+                var canceledId = await GetStatusIdByNameAsync(BookingEntityType, "Cancelada", ct);
+                if (booking.IdStatus != canceledId)
+                {
+                    int targetBookingStatusId;
+                    string historyNote;
+                    try
+                    {
+                        targetBookingStatusId = await GetStatusIdByNameAsync(BookingEntityType, BookingStatusPaid, ct);
+                        historyNote = "Reserva en estado Pagada por pago aprobado.";
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        targetBookingStatusId = await GetStatusIdByNameAsync(BookingEntityType, BookingStatusConfirmed, ct);
+                        historyNote = "Reserva confirmada por pago aprobado (estado Pagada no disponible en catálogo).";
+                    }
+
+                    if (booking.IdStatus != targetBookingStatusId)
+                    {
+                        await new UpdateBookingUseCase(bookingRepo)
+                            .ExecuteAsync(
+                                booking.Id.Value,
+                                booking.Code.Value,
+                                booking.FlightDate.Value,
+                                booking.CreationDate.Value,
+                                booking.SeatCount.Value,
+                                booking.Observations.Value,
+                                booking.IdFlight,
+                                targetBookingStatusId,
+                                ct);
+                        await new CreateBookingStatusHistoryUseCase(new BookingStatusHistoryRepository(context))
+                            .ExecuteAsync(DateTime.Now, historyNote, booking.Id.Value, targetBookingStatusId, AppState.IdUser, ct);
+                    }
+                }
+
+                await _ticketIssuance.EmitTicketsForBookingAsync(context, idBooking, ct);
+            }
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Pago actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -344,6 +424,6 @@ public sealed class PaymentMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Pago eliminado correctamente.[/]" : "\n[yellow]No se encontró el pago con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

@@ -1,9 +1,9 @@
 using SistemaDeGestionDeTicketsAereos.src.modules.fare.UI;
+using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
 using Spectre.Console;
 
-using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 namespace SistemaDeGestionDeTicketsAereos.src.modules.flight.UI;
 
 public class FlightsMenu : IModuleUI
@@ -38,8 +38,7 @@ public class FlightsMenu : IModuleUI
                 catch (Exception ex)
                 {
                     EntityPersistenceUiFeedback.Write(ex);
-                    AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                    Console.ReadKey();
+                    ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 }
             }
             else
@@ -54,8 +53,7 @@ public class FlightsMenu : IModuleUI
                     catch (Exception ex)
                     {
                         EntityPersistenceUiFeedback.Write(ex);
-                        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                        Console.ReadKey();
+                        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                     }
 
                     var next = AnsiConsole.Prompt(

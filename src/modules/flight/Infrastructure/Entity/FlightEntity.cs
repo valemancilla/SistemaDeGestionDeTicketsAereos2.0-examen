@@ -34,6 +34,9 @@ public class FlightEntity
     // Hora de llegada estimada
     public TimeOnly ArrivalTime { get; set; }
 
+    // Puerta de embarque asignada al vuelo (pase toma el mismo dato, salvo migraciones antiguas)
+    public string BoardingGate { get; set; } = "A01";
+
     // Capacidad total de pasajeros en este vuelo
     public int TotalCapacity { get; set; }
 

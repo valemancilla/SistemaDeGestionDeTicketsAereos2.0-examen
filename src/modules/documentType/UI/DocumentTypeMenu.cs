@@ -21,10 +21,10 @@ public sealed class DocumentTypeMenu
 
             switch (option)
             {
-                case "1. Crear tipo":      await CreateAsync(ct); break;
-                case "2. Listar tipos":    await ListAsync(ct);   break;
+                case "1. Crear tipo": await CreateAsync(ct); break;
+                case "2. Listar tipos": await ListAsync(ct); break;
                 case "3. Actualizar tipo": await UpdateAsync(ct); break;
-                case "4. Eliminar tipo":   await DeleteAsync(ct); break;
+                case "4. Eliminar tipo": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -44,7 +44,7 @@ public sealed class DocumentTypeMenu
                 table.AddRow(d.Id.Value.ToString(), Markup.Escape(d.Name.Value));
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateAsync(CancellationToken ct)
@@ -69,7 +69,7 @@ public sealed class DocumentTypeMenu
             AnsiConsole.MarkupLine($"\n[green]Tipo '[bold]{Markup.Escape(result.Name.Value)}[/]' creado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -89,7 +89,7 @@ public sealed class DocumentTypeMenu
             AnsiConsole.MarkupLine("\n[green]Tipo de documento actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -110,6 +110,6 @@ public sealed class DocumentTypeMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Tipo eliminado correctamente.[/]" : "\n[yellow]No se encontró el tipo con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

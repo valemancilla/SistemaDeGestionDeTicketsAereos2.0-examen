@@ -42,11 +42,15 @@ public class Flight
     // FK a la tarifa asignada a este vuelo (precio por vuelo). Null = sin tarifa asignada (compatibilidad).
     public int? IdFare { get; private set; }
 
+    // Puerta de embarque publicada con el vuelo (misma que usa el pase al hacer check-in).
+    public string BoardingGate { get; private set; } = "A01";
+
     // Constructor privado: solo se crea a través del método Create
     private Flight(FlightId id, FlightNumber number, FlightDate date,
         FlightDepartureTime departureTime, FlightArrivalTime arrivalTime,
         FlightTotalCapacity totalCapacity, FlightAvailableSeats availableSeats,
-        int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare)
+        int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare,
+        string boardingGate)
     {
         Id = id;
         Number = number;
@@ -60,14 +64,19 @@ public class Flight
         IdStatus = idStatus;
         IdCrew = idCrew;
         IdFare = idFare;
+        BoardingGate = boardingGate;
     }
 
     // Método de fábrica para crear o reconstruir un vuelo desde la base de datos
     public static Flight Create(int id, string number, DateOnly date,
         TimeOnly departureTime, TimeOnly arrivalTime,
         int totalCapacity, int availableSeats,
-        int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare)
+        int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare,
+        string? boardingGate = null)
     {
+        var gate = string.IsNullOrWhiteSpace(boardingGate) ? "A01" : boardingGate.Trim();
+        if (gate.Length > 20)
+            throw new ArgumentException("Boarding gate is too long (max 20).", nameof(boardingGate));
         // Regla: el vuelo debe operar en una ruta válida
         if (idRoute <= 0)
             throw new ArgumentException("IdRoute must be greater than 0.", nameof(idRoute));
@@ -107,11 +116,12 @@ public class Flight
             idAircraft,
             idStatus,
             idCrew,
-            idFare
+            idFare,
+            gate
         );
     }
 
     // Método de fábrica para crear un vuelo nuevo (ID = 0, la BD lo asigna después)
-    public static Flight CreateNew(string number, DateOnly date, TimeOnly departureTime, TimeOnly arrivalTime, int totalCapacity, int availableSeats, int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare)
-        => Create(0, number, date, departureTime, arrivalTime, totalCapacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare);
+    public static Flight CreateNew(string number, DateOnly date, TimeOnly departureTime, TimeOnly arrivalTime, int totalCapacity, int availableSeats, int idRoute, int idAircraft, int idStatus, int idCrew, int? idFare, string? boardingGate = null)
+        => Create(0, number, date, departureTime, arrivalTime, totalCapacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare, boardingGate);
 }

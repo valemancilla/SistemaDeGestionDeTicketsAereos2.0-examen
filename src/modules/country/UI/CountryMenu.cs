@@ -23,10 +23,10 @@ public sealed class CountryMenu
 
             switch (option)
             {
-                case "1. Crear país":      await CreateAsync(ct); break;
-                case "2. Listar países":   await ListAsync(ct);   break;
+                case "1. Crear país": await CreateAsync(ct); break;
+                case "2. Listar países": await ListAsync(ct); break;
                 case "3. Actualizar país": await UpdateAsync(ct); break;
-                case "4. Eliminar país":   await DeleteAsync(ct); break;
+                case "4. Eliminar país": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -55,8 +55,7 @@ public sealed class CountryMenu
             AnsiConsole.Write(table);
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task CreateAsync(CancellationToken ct)
@@ -91,8 +90,7 @@ public sealed class CountryMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -120,8 +118,7 @@ public sealed class CountryMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -156,7 +153,6 @@ public sealed class CountryMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

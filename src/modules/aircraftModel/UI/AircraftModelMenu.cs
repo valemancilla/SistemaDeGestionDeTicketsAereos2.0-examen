@@ -23,10 +23,10 @@ public sealed class AircraftModelMenu
 
             switch (option)
             {
-                case "1. Crear modelo":      await CreateAsync(ct); break;
-                case "2. Listar modelos":    await ListAsync(ct);   break;
+                case "1. Crear modelo": await CreateAsync(ct); break;
+                case "2. Listar modelos": await ListAsync(ct); break;
                 case "3. Actualizar modelo": await UpdateAsync(ct); break;
-                case "4. Eliminar modelo":   await DeleteAsync(ct); break;
+                case "4. Eliminar modelo": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -52,7 +52,7 @@ public sealed class AircraftModelMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectManufacturerAsync(CancellationToken ct)
@@ -89,7 +89,7 @@ public sealed class AircraftModelMenu
             AnsiConsole.MarkupLine($"\n[green]Modelo '[bold]{Markup.Escape(result.Name.Value)}[/]' creado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -110,7 +110,7 @@ public sealed class AircraftModelMenu
             AnsiConsole.MarkupLine("\n[green]Modelo actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -131,6 +131,6 @@ public sealed class AircraftModelMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Modelo eliminado correctamente.[/]" : "\n[yellow]No se encontró el modelo con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

@@ -29,7 +29,7 @@ public class LoginMenu : IModuleUI
     {
         while (!AppState.IsAuthenticated)
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { /* consola no interactiva */ }
             AnsiConsole.Write(new Rule("[yellow]SISTEMA DE GESTIÓN DE TIQUETES AÉREOS[/]").Centered());
             AnsiConsole.Write(new Rule("[blue]INICIO DE SESIÓN[/]").Centered());
 
@@ -60,7 +60,7 @@ public class LoginMenu : IModuleUI
         var attempt = true;
         while (attempt)
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { /* consola no interactiva */ }
             AnsiConsole.Write(new Rule("[blue]INICIAR SESIÓN[/]").Centered());
             var username = AnsiConsole.Ask<string>("Usuario: ");
             AnsiConsole.MarkupLine("[grey]Nota: la contraseña debe tener al menos 8 caracteres.[/]");
@@ -120,7 +120,7 @@ public class LoginMenu : IModuleUI
 
     private static async Task RegisterAsync(CancellationToken ct)
     {
-        Console.Clear();
+        try { Console.Clear(); } catch { /* consola no interactiva */ }
         AnsiConsole.Write(new Rule("[yellow]REGISTRO DE NUEVO CLIENTE[/]").Centered());
         AnsiConsole.MarkupLine("[grey]Completa los siguientes datos para crear tu cuenta.[/]\n");
 
@@ -134,7 +134,7 @@ public class LoginMenu : IModuleUI
                 .Validate(p => !string.IsNullOrEmpty(p) && p.Length >= 8
                     ? ValidationResult.Success()
                     : ValidationResult.Error("[red]La contraseña debe tener al menos 8 caracteres[/]")));
-        var confirm  = AnsiConsole.Prompt(new TextPrompt<string>("Confirmar contraseña:").Secret());
+        var confirm = AnsiConsole.Prompt(new TextPrompt<string>("Confirmar contraseña:").Secret());
 
         if (password != confirm)
         {
@@ -146,7 +146,7 @@ public class LoginMenu : IModuleUI
         // ── Paso 2: datos personales ──────────────────────────────────────────
         AnsiConsole.MarkupLine("\n[bold]Datos personales[/]");
         var firstName = AnsiConsole.Ask<string>("Nombre:");
-        var lastName  = AnsiConsole.Ask<string>("Apellido:");
+        var lastName = AnsiConsole.Ask<string>("Apellido:");
 
         var birthDateStr = AnsiConsole.Ask<string>("Fecha de nacimiento (yyyy-MM-dd):");
         if (!DateOnly.TryParse(birthDateStr, out var birthDate))
@@ -242,7 +242,6 @@ public class LoginMenu : IModuleUI
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 }

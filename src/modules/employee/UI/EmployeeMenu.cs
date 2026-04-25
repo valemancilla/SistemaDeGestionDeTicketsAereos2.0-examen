@@ -29,9 +29,9 @@ public sealed class EmployeeMenu
             switch (option)
             {
                 case "1. Registrar empleado": await CreateAsync(ct); break;
-                case "2. Listar empleados":   await ListAsync(ct);   break;
-                case "3. Actualizar empleado":await UpdateAsync(ct); break;
-                case "4. Eliminar empleado":  await DeleteAsync(ct); break;
+                case "2. Listar empleados": await ListAsync(ct); break;
+                case "3. Actualizar empleado": await UpdateAsync(ct); break;
+                case "4. Eliminar empleado": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -63,7 +63,7 @@ public sealed class EmployeeMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectPersonAsync(CancellationToken ct)
@@ -124,7 +124,7 @@ public sealed class EmployeeMenu
             AnsiConsole.MarkupLine($"\n[green]Empleado registrado con ID {createdId}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -147,7 +147,7 @@ public sealed class EmployeeMenu
             AnsiConsole.MarkupLine("\n[green]Empleado actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -168,6 +168,6 @@ public sealed class EmployeeMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Empleado eliminado correctamente.[/]" : "\n[yellow]No se encontró el empleado con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

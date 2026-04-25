@@ -37,12 +37,9 @@
     <Folder Include="src\modules\airportTimeZone\Infrastructure\" />
     <Folder Include="src\modules\airportTimeZone\Infrastructure\Entity\" />
     <Folder Include="src\modules\airportTimeZone\Ui\" />
-    <Folder Include="src\modules\ejemplo\Application\Interfaces\" />
-    <Folder Include="src\modules\ejemplo\Application\Services\" />
-    <Folder Include="src\modules\ejemplo\Application\UseCases\" />
-    <Folder Include="src\modules\ejemplo\Domain\aggregate\" />
-    <Folder Include="src\modules\ejemplo\Domain\Repositories\" />
-    <Folder Include="src\modules\ejemplo\Domain\valueObject\" />
+    <Folder Include="src\modules\boardingPass\Application\Interfaces\" />
+    <Folder Include="src\modules\boardingPass\Application\Services\" />
+    <Folder Include="src\modules\boardingPass\UI\" />
     <Folder Include="src\shared\configuration\" />
   </ItemGroup>
 </Project>

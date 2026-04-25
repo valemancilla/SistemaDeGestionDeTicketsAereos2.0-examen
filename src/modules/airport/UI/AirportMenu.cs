@@ -33,12 +33,12 @@ public sealed class AirportMenu
 
             switch (option)
             {
-                case "1. Crear aeropuerto":      await CreateAsync(ct);         break;
-                case "2. Listar aeropuertos":   await ListAsync(ct);           break;
-                case "3. Actualizar aeropuerto": await UpdateAsync(ct);         break;
-                case "4. Asignar zona horaria":  await AssignTimeZoneAsync(ct); break;
-                case "5. Activar / Desactivar":  await ToggleActiveAsync(ct);   break;
-                case "6. Eliminar aeropuerto":   await DeleteAsync(ct);         break;
+                case "1. Crear aeropuerto": await CreateAsync(ct); break;
+                case "2. Listar aeropuertos": await ListAsync(ct); break;
+                case "3. Actualizar aeropuerto": await UpdateAsync(ct); break;
+                case "4. Asignar zona horaria": await AssignTimeZoneAsync(ct); break;
+                case "5. Activar / Desactivar": await ToggleActiveAsync(ct); break;
+                case "6. Eliminar aeropuerto": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -49,7 +49,7 @@ public sealed class AirportMenu
         Console.Clear();
         using var context = DbContextFactory.Create();
         var airports = await new GetAllAirportsUseCase(new AirportRepository(context)).ExecuteAsync(ct);
-        var cities   = await new GetAllCitiesUseCase(new CityRepository(context)).ExecuteAsync(ct);
+        var cities = await new GetAllCitiesUseCase(new CityRepository(context)).ExecuteAsync(ct);
         var countries = await new GetAllCountriesUseCase(new CountryRepository(context)).ExecuteAsync(ct);
         var timeZones = await new GetAllTimeZonesUseCase(new TimeZoneRepository(context)).ExecuteAsync(ct);
 
@@ -96,7 +96,7 @@ public sealed class AirportMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectCityAsync(CancellationToken ct)
@@ -139,7 +139,7 @@ public sealed class AirportMenu
                 await AssignTimeZoneToAirportAsync(createdId, ct);
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task UpdateAsync(CancellationToken ct)
@@ -162,7 +162,7 @@ public sealed class AirportMenu
             AnsiConsole.MarkupLine("\n[green]Aeropuerto actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task ToggleActiveAsync(CancellationToken ct)
@@ -187,7 +187,7 @@ public sealed class AirportMenu
             AnsiConsole.MarkupLine($"\n[green]Aeropuerto '{Markup.Escape(airport.Name.Value)}' ahora está {(!airport.Active ? "ACTIVO" : "INACTIVO")}.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AssignTimeZoneAsync(CancellationToken ct)
@@ -203,7 +203,7 @@ public sealed class AirportMenu
         var idAirport = int.Parse(selected.Split(new char[] { '.' })[0]);
 
         await AssignTimeZoneToAirportAsync(idAirport, ct);
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AssignTimeZoneToAirportAsync(int idAirport, CancellationToken ct)
@@ -243,7 +243,7 @@ public sealed class AirportMenu
             if (airport is null)
             {
                 AnsiConsole.MarkupLine("\n[yellow]No se encontró el aeropuerto con ese ID.[/]");
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 return;
             }
 
@@ -260,7 +260,7 @@ public sealed class AirportMenu
             {
                 AnsiConsole.MarkupLine($"\n[red]No se puede eliminar[/] porque está asociado a [bold]{routesCount}[/] ruta(s).");
                 AnsiConsole.MarkupLine("[grey]Primero elimina o reasigna esas rutas (y sus vuelos), luego intenta de nuevo.[/]");
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 return;
             }
 
@@ -280,6 +280,6 @@ public sealed class AirportMenu
                 : "\n[yellow]No se encontró el aeropuerto con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

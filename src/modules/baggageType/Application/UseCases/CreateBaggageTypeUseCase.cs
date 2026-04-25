@@ -11,9 +11,15 @@ public sealed class CreateBaggageTypeUseCase
     public CreateBaggageTypeUseCase(IBaggageTypeRepository repo) => _repo = repo;
 
     // Las validaciones (nombre no vacío, longitud) las maneja el VO BaggageTypeName dentro del agregado
-    public async Task<BaggageType> ExecuteAsync(string name, CancellationToken ct = default)
+    public async Task<BaggageType> ExecuteAsync(
+        string name,
+        decimal weightKg,
+        decimal basePriceCop,
+        string? description,
+        bool isActive,
+        CancellationToken ct = default)
     {
-        var entity = BaggageType.CreateNew(name);
+        var entity = BaggageType.CreateNew(name, weightKg, basePriceCop, description, isActive);
         await _repo.AddAsync(entity, ct);
         return entity;
     }

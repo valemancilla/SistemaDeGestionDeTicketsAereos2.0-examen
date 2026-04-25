@@ -1,9 +1,9 @@
 using SistemaDeGestionDeTicketsAereos.src.modules.employee.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.person.UI;
+using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui;
 using Spectre.Console;
 
-using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 namespace SistemaDeGestionDeTicketsAereos.src.modules.crew.UI;
 
 public class CrewMenu : IModuleUI
@@ -31,8 +31,8 @@ public class CrewMenu : IModuleUI
             {
                 switch (option)
                 {
-                    case "1. Personas":             await new PersonMenu().RunAsync(cancellationToken);    break;
-                    case "2. Empleados":             await new EmployeeMenu().RunAsync(cancellationToken);  break;
+                    case "1. Personas": await new PersonMenu().RunAsync(cancellationToken); break;
+                    case "2. Empleados": await new EmployeeMenu().RunAsync(cancellationToken); break;
                     case "3. Tripulaciones (grupos y miembros)": await new CrewGroupMenu().RunAsync(cancellationToken); break;
                     case "0. Volver": back = true; break;
                 }
@@ -40,8 +40,7 @@ public class CrewMenu : IModuleUI
             catch (Exception ex)
             {
                 EntityPersistenceUiFeedback.Write(ex);
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             }
         }
     }

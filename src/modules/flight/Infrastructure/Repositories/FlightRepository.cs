@@ -80,6 +80,7 @@ public sealed class FlightRepository : IFlightRepository
         entity.IdStatus = values.IdStatus;
         entity.IdCrew = values.IdCrew;
         entity.IdFare = values.IdFare;
+        entity.BoardingGate = values.BoardingGate;
     }
 
     public async Task DeleteAsync(FlightId id, CancellationToken ct = default)
@@ -187,7 +188,20 @@ public sealed class FlightRepository : IFlightRepository
 
     private static Flight ToDomain(FlightEntity entity)
     {
-        return Flight.Create(entity.IdFlight, entity.FlightNumber, entity.Date, entity.DepartureTime, entity.ArrivalTime, entity.TotalCapacity, entity.AvailableSeats, entity.IdRoute, entity.IdAircraft, entity.IdStatus, entity.IdCrew, entity.IdFare);
+        return Flight.Create(
+            entity.IdFlight,
+            entity.FlightNumber,
+            entity.Date,
+            entity.DepartureTime,
+            entity.ArrivalTime,
+            entity.TotalCapacity,
+            entity.AvailableSeats,
+            entity.IdRoute,
+            entity.IdAircraft,
+            entity.IdStatus,
+            entity.IdCrew,
+            entity.IdFare,
+            entity.BoardingGate);
     }
 
     private static FlightEntity ToEntity(Flight aggregate)
@@ -205,7 +219,8 @@ public sealed class FlightRepository : IFlightRepository
             AvailableSeats = aggregate.AvailableSeats.Value,
             IdStatus = aggregate.IdStatus,
             IdCrew = aggregate.IdCrew,
-            IdFare = aggregate.IdFare
+            IdFare = aggregate.IdFare,
+            BoardingGate = aggregate.BoardingGate
         };
     }
 }

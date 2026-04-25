@@ -31,12 +31,12 @@ public sealed class AircraftMenu
 
             switch (option)
             {
-                case "1. Registrar aeronave":       await CreateAsync(ct);         break;
-                case "2. Listar aeronaves":         await ListAsync(ct);           break;
-                case "3. Ver asientos de aeronave": await ListSeatsAsync(ct);      break;
-                case "4. Listar todos los asientos":await ListAllSeatsAsync(ct);   break;
-                case "5. Actualizar aeronave":      await UpdateAsync(ct);         break;
-                case "6. Eliminar aeronave":        await DeleteAsync(ct);         break;
+                case "1. Registrar aeronave": await CreateAsync(ct); break;
+                case "2. Listar aeronaves": await ListAsync(ct); break;
+                case "3. Ver asientos de aeronave": await ListSeatsAsync(ct); break;
+                case "4. Listar todos los asientos": await ListAllSeatsAsync(ct); break;
+                case "5. Actualizar aeronave": await UpdateAsync(ct); break;
+                case "6. Eliminar aeronave": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -47,10 +47,10 @@ public sealed class AircraftMenu
         Console.Clear();
         using var context = DbContextFactory.Create();
         var aircrafts = await new GetAllAircraftsUseCase(new AircraftRepository(context)).ExecuteAsync(ct);
-        var airlines  = await new GetAllAerolinesUseCase(new AerolineRepository(context)).ExecuteAsync(ct);
-        var models    = await new GetAllAircraftModelsUseCase(new AircraftModelRepository(context)).ExecuteAsync(ct);
+        var airlines = await new GetAllAerolinesUseCase(new AerolineRepository(context)).ExecuteAsync(ct);
+        var models = await new GetAllAircraftModelsUseCase(new AircraftModelRepository(context)).ExecuteAsync(ct);
         var airlineMap = airlines.ToDictionary(a => a.Id.Value, a => a.Name.Value);
-        var modelMap   = models.ToDictionary(m => m.Id.Value, m => m.Name.Value);
+        var modelMap = models.ToDictionary(m => m.Id.Value, m => m.Name.Value);
 
         if (!aircrafts.Any()) { AnsiConsole.MarkupLine("[yellow]No hay aeronaves registradas.[/]"); }
         else
@@ -60,12 +60,12 @@ public sealed class AircraftMenu
             foreach (var a in aircrafts)
             {
                 var airline = airlineMap.TryGetValue(a.IdAirline, out var an) ? an : a.IdAirline.ToString();
-                var model   = modelMap.TryGetValue(a.IdModel, out var mn) ? mn : a.IdModel.ToString();
+                var model = modelMap.TryGetValue(a.IdModel, out var mn) ? mn : a.IdModel.ToString();
                 table.AddRow(a.Id.Value.ToString(), a.Capacity.Value.ToString(), Markup.Escape(airline), Markup.Escape(model));
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task ListAllSeatsAsync(CancellationToken ct)
@@ -102,7 +102,7 @@ public sealed class AircraftMenu
                 "en «Ver asientos de aeronave» debes elegir ese mismo ID para verlos agrupados.[/]");
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int?> SelectAircraftIdFromDbAsync(CancellationToken ct)
@@ -112,21 +112,20 @@ public sealed class AircraftMenu
         if (!aircrafts.Any())
         {
             AnsiConsole.MarkupLine("[yellow]No hay aeronaves registradas.[/]");
-            AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla();
             return null;
         }
 
         var airlines = await new GetAllAerolinesUseCase(new AerolineRepository(context)).ExecuteAsync(ct);
-        var models   = await new GetAllAircraftModelsUseCase(new AircraftModelRepository(context)).ExecuteAsync(ct);
+        var models = await new GetAllAircraftModelsUseCase(new AircraftModelRepository(context)).ExecuteAsync(ct);
         var airlineMap = airlines.ToDictionary(a => a.Id.Value, a => a.Name.Value);
-        var modelMap   = models.ToDictionary(m => m.Id.Value, m => m.Name.Value);
+        var modelMap = models.ToDictionary(m => m.Id.Value, m => m.Name.Value);
 
         var choices = new List<string> { "0. Volver" };
         choices.AddRange(aircrafts.OrderBy(a => a.Id.Value).Select(a =>
         {
             var airline = airlineMap.TryGetValue(a.IdAirline, out var an) ? an : a.IdAirline.ToString();
-            var model   = modelMap.TryGetValue(a.IdModel, out var mn) ? mn : a.IdModel.ToString();
+            var model = modelMap.TryGetValue(a.IdModel, out var mn) ? mn : a.IdModel.ToString();
             return $"{a.Id.Value}. Cap. {a.Capacity.Value} — {airline} — {model}";
         }));
 
@@ -182,7 +181,7 @@ public sealed class AircraftMenu
             AnsiConsole.MarkupLine($"\n[grey]Total: {filtered.Count} asientos.[/]");
         }
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectAirlineAsync(CancellationToken ct)
@@ -219,7 +218,7 @@ public sealed class AircraftMenu
         try
         {
             var idAirline = await SelectAirlineAsync(ct);
-            var idModel   = await SelectModelAsync(ct);
+            var idModel = await SelectModelAsync(ct);
 
             using var context = DbContextFactory.Create();
             // Importante: el agregado nuevo se crea con Id=0 y la BD lo genera al guardar.
@@ -244,7 +243,7 @@ public sealed class AircraftMenu
                 await GenerateSeatsAsync(createdId, capacity, ct);
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task GenerateSeatsAsync(int idAircraft, int totalCapacity, CancellationToken ct)
@@ -276,10 +275,10 @@ public sealed class AircraftMenu
         // Genera números de asiento: filas de 6 columnas (A-F)
         using var context = DbContextFactory.Create();
         var seatRepo = new SeatRepository(context);
-        var useCase  = new CreateSeatUseCase(seatRepo);
+        var useCase = new CreateSeatUseCase(seatRepo);
         char[] columns = ['A', 'B', 'C', 'D', 'E', 'F'];
         int globalRow = 1;
-        int colIndex  = 0;
+        int colIndex = 0;
 
         await AnsiConsole.Progress().StartAsync(async progressCtx =>
         {
@@ -315,14 +314,14 @@ public sealed class AircraftMenu
         try
         {
             var idAirline = await SelectAirlineAsync(ct);
-            var idModel   = await SelectModelAsync(ct);
+            var idModel = await SelectModelAsync(ct);
             using var context = DbContextFactory.Create();
             await new UpdateAircraftUseCase(new AircraftRepository(context)).ExecuteAsync(id, capacity, idAirline, idModel, ct);
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Aeronave actualizada correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -343,6 +342,6 @@ public sealed class AircraftMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Aeronave eliminada correctamente.[/]" : "\n[yellow]No se encontró la aeronave con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

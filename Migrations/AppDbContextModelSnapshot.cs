@@ -333,10 +333,26 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IdBaggageType"));
 
+                    b.Property<decimal>("BasePriceCop")
+                        .HasColumnType("decimal(12,2)")
+                        .HasColumnName("BasePriceCop");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("Description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("IsActive");
+
                     b.Property<string>("TypeName")
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("TypeName");
+
+                    b.Property<decimal>("WeightKg")
+                        .HasColumnType("decimal(6,2)")
+                        .HasColumnName("WeightKg");
 
                     b.HasKey("IdBaggageType");
 
@@ -346,33 +362,102 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                         new
                         {
                             IdBaggageType = 1,
-                            TypeName = "Equipaje de mano"
+                            BasePriceCop = 70000m,
+                            Description = "Equipaje de mano (10 kg).",
+                            IsActive = true,
+                            TypeName = "Equipaje de mano",
+                            WeightKg = 10m
                         },
                         new
                         {
                             IdBaggageType = 2,
-                            TypeName = "Equipaje de bodega"
+                            BasePriceCop = 70000m,
+                            Description = "Equipaje de bodega (23 kg).",
+                            IsActive = true,
+                            TypeName = "Equipaje de bodega",
+                            WeightKg = 23m
                         },
                         new
                         {
                             IdBaggageType = 3,
-                            TypeName = "Equipaje especial"
+                            BasePriceCop = 0m,
+                            Description = "Equipaje especial.",
+                            IsActive = true,
+                            TypeName = "Equipaje especial",
+                            WeightKg = 0m
                         },
                         new
                         {
-                            IdBaggageType = 4,
-                            TypeName = "Tarifa Basic (elegida al comprar)"
-                        },
-                        new
-                        {
-                            IdBaggageType = 5,
-                            TypeName = "Tarifa Classic (elegida al comprar)"
-                        },
-                        new
-                        {
-                            IdBaggageType = 6,
-                            TypeName = "Tarifa Flex (elegida al comprar)"
+                            IdBaggageType = 7,
+                            BasePriceCop = 0m,
+                            Description = "Artículo personal (bolso).",
+                            IsActive = true,
+                            TypeName = "Artículo personal (bolso)",
+                            WeightKg = 0m
                         });
+                });
+
+            modelBuilder.Entity("SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Infrastructure.Entity.BoardingPassEntity", b =>
+                {
+                    b.Property<int>("IdBoardingPass")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("IdBoardingPass");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IdBoardingPass"));
+
+                    b.Property<DateTime>("BoardingTime")
+                        .HasColumnType("datetime")
+                        .HasColumnName("BoardingTime");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("varchar(25)")
+                        .HasColumnName("Code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasColumnName("CreatedAt")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Gate")
+                        .IsRequired()
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("Gate");
+
+                    b.Property<int>("IdSeat")
+                        .HasColumnType("int")
+                        .HasColumnName("IdSeat");
+
+                    b.Property<int>("IdStatus")
+                        .HasColumnType("int")
+                        .HasColumnName("IdStatus");
+
+                    b.Property<int>("IdTicket")
+                        .HasColumnType("int")
+                        .HasColumnName("IdTicket");
+
+                    b.Property<string>("PassengerFullName")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("varchar(200)")
+                        .HasDefaultValue("")
+                        .HasColumnName("PassengerFullName");
+
+                    b.HasKey("IdBoardingPass");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IdSeat");
+
+                    b.HasIndex("IdStatus");
+
+                    b.HasIndex("IdTicket")
+                        .IsUnique();
+
+                    b.ToTable("BoardingPass", (string)null);
                 });
 
             modelBuilder.Entity("SistemaDeGestionDeTicketsAereos.src.modules.booking.Infrastructure.Entity.BookingEntity", b =>
@@ -832,11 +917,11 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                         new
                         {
                             Id = 1,
-                            BasicBodyMarkup = "[bold]Incluye[/]\r\n[#db2777]✓[/] 1 artículo personal (bolso)\r\n[#db2777]✓[/] Acumula 3 millas por USD\r\n[grey]$ Equipaje de mano (10 kg) - Desde {{CARRYON}}[/]\r\n[grey]$ Equipaje de bodega (23 kg) - Desde {{CHECKED}}[/]\r\n[grey]$ Check-in en aeropuerto[/]\r\n[grey]$ Selección de asientos - Desde {{SEAT}}[/]\r\n[grey]$ Menú a bordo[/]\r\n[grey]$ Cambios antes del vuelo[/]\r\n[grey]✗ Reembolsos antes del vuelo[/]",
-                            ClassicBodyMarkup = "[bold]Incluye[/]\r\n[#6d28d9]✓[/] 1 artículo personal (bolso)\r\n[#6d28d9]✓[/] 1 equipaje de mano (10 kg)\r\n[#6d28d9]✓[/] 1 equipaje de bodega (23 kg)\r\n[#6d28d9]✓[/] Check-in en aeropuerto\r\n[#6d28d9]✓[/] Asiento Economy incluido\r\n[#6d28d9]✓[/] Acumula 6 millas por USD\r\n[grey]$ Menú a bordo[/]\r\n[grey]$ Cambios antes del vuelo[/]\r\n[grey]✗ Reembolsos antes del vuelo[/]",
+                            BasicBodyMarkup = "[bold]Incluye[/]\n[#db2777]✓[/] 1 artículo personal (bolso)\n[#db2777]✓[/] Acumula 3 millas por USD\n[grey]$ Equipaje de mano (10 kg) - Desde {{CARRYON}}[/]\n[grey]$ Equipaje de bodega (23 kg) - Desde {{CHECKED}}[/]\n[grey]$ Check-in en aeropuerto[/]\n[grey]$ Selección de asientos - Desde {{SEAT}}[/]\n[grey]$ Menú a bordo[/]\n[grey]$ Cambios antes del vuelo[/]\n[grey]✗ Reembolsos antes del vuelo[/]",
+                            ClassicBodyMarkup = "[bold]Incluye[/]\n[#6d28d9]✓[/] 1 artículo personal (bolso)\n[#6d28d9]✓[/] 1 equipaje de mano (10 kg)\n[#6d28d9]✓[/] 1 equipaje de bodega (23 kg)\n[#6d28d9]✓[/] Check-in en aeropuerto\n[#6d28d9]✓[/] Asiento Economy incluido\n[#6d28d9]✓[/] Acumula 6 millas por USD\n[grey]$ Menú a bordo[/]\n[grey]$ Cambios antes del vuelo[/]\n[grey]✗ Reembolsos antes del vuelo[/]",
                             ClassicMultiplier = 1.465m,
                             ExplainerLine = "En [bold]Basic[/] el total de referencia suma al pasaje el equipaje de mano y de bodega ({{CARRYON}} + {{CHECKED}}). En Classic y Flex ese equipaje va incluido en la tarifa mostrada en las tarjetas.",
-                            FlexBodyMarkup = "[bold]Incluye[/]\r\n[#ea580c]✓[/] 1 artículo personal (bolso)\r\n[#ea580c]✓[/] 1 equipaje de mano (10 kg)\r\n[#ea580c]✓[/] 1 equipaje de bodega (23 kg)\r\n[#ea580c]✓[/] Check-in en aeropuerto\r\n[#ea580c]✓[/] Asiento Plus\r\n[#ea580c]✓[/] Acumula 8 millas por USD\r\n[#ea580c]✓[/] Cambios antes del vuelo\r\n[#ea580c]✓[/] Reembolsos antes del vuelo\r\n[grey]$ Menú a bordo[/]",
+                            FlexBodyMarkup = "[bold]Incluye[/]\n[#ea580c]✓[/] 1 artículo personal (bolso)\n[#ea580c]✓[/] 1 equipaje de mano (10 kg)\n[#ea580c]✓[/] 1 equipaje de bodega (23 kg)\n[#ea580c]✓[/] Check-in en aeropuerto\n[#ea580c]✓[/] Asiento Plus\n[#ea580c]✓[/] Acumula 8 millas por USD\n[#ea580c]✓[/] Cambios antes del vuelo\n[#ea580c]✓[/] Reembolsos antes del vuelo\n[grey]$ Menú a bordo[/]",
                             FlexMultiplier = 1.6285m,
                             RefCarryOnCop = 70000m,
                             RefCheckedCop = 70000m,
@@ -1350,6 +1435,13 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                         .HasColumnType("int")
                         .HasColumnName("AvailableSeats");
 
+                    b.Property<string>("BoardingGate")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("A01")
+                        .HasColumnName("BoardingGate");
+
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date")
                         .HasColumnName("Date");
@@ -1407,6 +1499,7 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                             IdFlight = 1,
                             ArrivalTime = new TimeOnly(14, 45, 0),
                             AvailableSeats = 20,
+                            BoardingGate = "B12",
                             Date = new DateOnly(2026, 12, 15),
                             DepartureTime = new TimeOnly(8, 30, 0),
                             FlightNumber = "DM101",
@@ -2336,6 +2429,24 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                         },
                         new
                         {
+                            IdStatus = 21,
+                            EntityType = "Ticket",
+                            StatusName = "Emitido"
+                        },
+                        new
+                        {
+                            IdStatus = 22,
+                            EntityType = "Ticket",
+                            StatusName = "Check-in realizado"
+                        },
+                        new
+                        {
+                            IdStatus = 25,
+                            EntityType = "Ticket",
+                            StatusName = "Abordado"
+                        },
+                        new
+                        {
                             IdStatus = 12,
                             EntityType = "CheckIn",
                             StatusName = "Completado"
@@ -2387,6 +2498,18 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                             IdStatus = 20,
                             EntityType = "Booking",
                             StatusName = "Pagada"
+                        },
+                        new
+                        {
+                            IdStatus = 23,
+                            EntityType = "BoardingPass",
+                            StatusName = "Generado"
+                        },
+                        new
+                        {
+                            IdStatus = 24,
+                            EntityType = "BoardingPass",
+                            StatusName = "Activo"
                         });
                 });
 
@@ -2732,6 +2855,33 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                         .IsRequired();
 
                     b.Navigation("BaggageType");
+
+                    b.Navigation("Ticket");
+                });
+
+            modelBuilder.Entity("SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.Infrastructure.Entity.BoardingPassEntity", b =>
+                {
+                    b.HasOne("SistemaDeGestionDeTicketsAereos.src.modules.seat.Infrastructure.Entity.SeatEntity", "Seat")
+                        .WithMany()
+                        .HasForeignKey("IdSeat")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Entity.SystemStatusEntity", "Status")
+                        .WithMany()
+                        .HasForeignKey("IdStatus")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Entity.TicketEntity", "Ticket")
+                        .WithMany()
+                        .HasForeignKey("IdTicket")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Seat");
+
+                    b.Navigation("Status");
 
                     b.Navigation("Ticket");
                 });

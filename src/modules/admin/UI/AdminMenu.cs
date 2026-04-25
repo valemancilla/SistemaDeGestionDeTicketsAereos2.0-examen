@@ -1,4 +1,5 @@
 using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.UI;
+using SistemaDeGestionDeTicketsAereos.src.modules.boardingPass.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.checkinChannel.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.city.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.country.UI;
@@ -11,10 +12,10 @@ using SistemaDeGestionDeTicketsAereos.src.modules.seatClass.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.timeZone.UI;
 using SistemaDeGestionDeTicketsAereos.src.modules.user.UI;
+using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui;
 using Spectre.Console;
 
-using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 namespace SistemaDeGestionDeTicketsAereos.src.modules.admin.UI;
 
 public class AdminMenu : IModuleUI
@@ -46,11 +47,12 @@ public class AdminMenu : IModuleUI
                         "8. Estados del sistema",
                         "9. Zonas horarias",
                         "10. Canales de check-in",
+                        "11. Pases de abordar",
                     })
                     .AddChoiceGroup("--- PERSONAL Y SEGURIDAD ---", new[] {
-                        "11. Roles de empleado",
-                        "12. Roles de usuario",
-                        "13. Usuarios del sistema",
+                        "12. Roles de empleado",
+                        "13. Roles de usuario",
+                        "14. Usuarios del sistema",
                     })
                     .AddChoices(new[] { "0. Volver" })
             );
@@ -64,8 +66,7 @@ public class AdminMenu : IModuleUI
             catch (Exception ex)
             {
                 EntityPersistenceUiFeedback.Write(ex);
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             }
         }
     }
@@ -74,19 +75,20 @@ public class AdminMenu : IModuleUI
     {
         switch (option)
         {
-            case "1. Países":              await new CountryMenu().RunAsync(ct);        break;
-            case "2. Ciudades":            await new CityMenu().RunAsync(ct);           break;
-            case "3. Géneros":             await new GenderMenu().RunAsync(ct);         break;
-            case "4. Tipos de documento":  await new DocumentTypeMenu().RunAsync(ct);   break;
-            case "5. Clases de asiento":   await new SeatClassMenu().RunAsync(ct);      break;
-            case "6. Tipos de equipaje":   await new BaggageTypeMenu().RunAsync(ct);    break;
-            case "7. Métodos de pago":     await new PaymentMethodMenu().RunAsync(ct);  break;
-            case "8. Estados del sistema": await new SystemStatusMenu().RunAsync(ct);   break;
-            case "9. Zonas horarias":      await new TimeZoneMenu().RunAsync(ct);       break;
-            case "10. Canales de check-in":await new CheckInChannelMenu().RunAsync(ct); break;
-            case "11. Roles de empleado":  await new EmployeeRoleMenu().RunAsync(ct);   break;
-            case "12. Roles de usuario":   await new RoleMenu().RunAsync(ct);           break;
-            case "13. Usuarios del sistema":await new UserMenu().RunAsync(ct);          break;
+            case "1. Países": await new CountryMenu().RunAsync(ct); break;
+            case "2. Ciudades": await new CityMenu().RunAsync(ct); break;
+            case "3. Géneros": await new GenderMenu().RunAsync(ct); break;
+            case "4. Tipos de documento": await new DocumentTypeMenu().RunAsync(ct); break;
+            case "5. Clases de asiento": await new SeatClassMenu().RunAsync(ct); break;
+            case "6. Tipos de equipaje": await new BaggageTypeMenu().RunAsync(ct); break;
+            case "7. Métodos de pago": await new PaymentMethodMenu().RunAsync(ct); break;
+            case "8. Estados del sistema": await new SystemStatusMenu().RunAsync(ct); break;
+            case "9. Zonas horarias": await new TimeZoneMenu().RunAsync(ct); break;
+            case "10. Canales de check-in": await new CheckInChannelMenu().RunAsync(ct); break;
+            case "11. Pases de abordar": await new BoardingPassMenu().RunAsync(ct); break;
+            case "12. Roles de empleado": await new EmployeeRoleMenu().RunAsync(ct); break;
+            case "13. Roles de usuario": await new RoleMenu().RunAsync(ct); break;
+            case "14. Usuarios del sistema": await new UserMenu().RunAsync(ct); break;
         }
     }
 }

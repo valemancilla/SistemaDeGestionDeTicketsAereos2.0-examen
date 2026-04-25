@@ -47,6 +47,11 @@ using SistemaDeGestionDeTicketsAereos.src.modules.bookingCustomer.Infrastructure
 using SistemaDeGestionDeTicketsAereos.src.modules.seat.Domain.aggregate;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.clientFareBundleDisplay.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.clientFareBundleDisplay.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.clientFareBundleDisplay.Domain;
+using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
@@ -56,10 +61,8 @@ namespace SistemaDeGestionDeTicketsAereos.src.modules.flight.UI;
 
 public sealed class FlightMenu
 {
-    /// <summary>Referencia COP alineada con el texto de la tarifa Basic (equipaje de pago adicional al pasaje base).</summary>
-    private const decimal ReferenceBaggageCarryOnCop = 70_000m;
-
-    private const decimal ReferenceBaggageCheckedCop = 70_000m;
+    private const string BaggageCarryOnName = "Equipaje de mano";
+    private const string BaggageCheckedName = "Equipaje de bodega";
 
     /// <summary>Mismos datos que el cliente ingresa en «Buscar vuelos» antes de consultar la base.</summary>
     private sealed record ClientTripSearchCriteria(
@@ -112,8 +115,7 @@ public sealed class FlightMenu
         if (idOriginAirport == idDestinationAirport)
         {
             AnsiConsole.MarkupLine("\n[red]El origen y el destino no pueden ser el mismo.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return null;
         }
 
@@ -185,8 +187,7 @@ public sealed class FlightMenu
         if (idOriginAirport == idDestinationAirport)
         {
             AnsiConsole.MarkupLine("\n[red]El origen y el destino no pueden ser el mismo.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return null;
         }
 
@@ -243,27 +244,27 @@ public sealed class FlightMenu
             switch (option)
             {
                 case "1. Crear vuelo (flujo guiado)":
-                {
-                    var mode = AnsiConsole.Prompt(
-                        new SelectionPrompt<string>()
-                            .Title("Publicación (ADMIN): todos los vuelos se crean por [bold]rutas existentes[/].")
-                            .PageSize(5)
-                            .AddChoices(
-                                "Solo IDA (1 vuelo)",
-                                "IDA y VUELTA (2 vuelos: ida + regreso)",
-                                "0. Volver"));
-                    if (mode.StartsWith("0.", StringComparison.Ordinal))
+                    {
+                        var mode = AnsiConsole.Prompt(
+                            new SelectionPrompt<string>()
+                                .Title("Publicación (ADMIN): todos los vuelos se crean por [bold]rutas existentes[/].")
+                                .PageSize(5)
+                                .AddChoices(
+                                    "Solo IDA (1 vuelo)",
+                                    "IDA y VUELTA (2 vuelos: ida + regreso)",
+                                    "0. Volver"));
+                        if (mode.StartsWith("0.", StringComparison.Ordinal))
+                            break;
+                        if (mode.StartsWith("Solo IDA", StringComparison.Ordinal))
+                            await CreateGuidedAsync(ct);
+                        else
+                            await CreateRoundTripFromExistingRoutesAsync(ct);
                         break;
-                    if (mode.StartsWith("Solo IDA", StringComparison.Ordinal))
-                        await CreateGuidedAsync(ct);
-                    else
-                        await CreateRoundTripFromExistingRoutesAsync(ct);
-                    break;
-                }
-                case "2. Listar vuelos":              await ListAsync(ct);         break;
-                case "3. Actualizar vuelo":            await UpdateAsync(ct);       break;
-                case "4. Registrar cambio de estado":  await AddStatusHistoryAsync(ct); break;
-                case "5. Eliminar vuelo":              await DeleteAsync(ct);       break;
+                    }
+                case "2. Listar vuelos": await ListAsync(ct); break;
+                case "3. Actualizar vuelo": await UpdateAsync(ct); break;
+                case "4. Registrar cambio de estado": await AddStatusHistoryAsync(ct); break;
+                case "5. Eliminar vuelo": await DeleteAsync(ct); break;
                 case "0. Volver": back = true; break;
             }
         }
@@ -404,8 +405,7 @@ public sealed class FlightMenu
             AnsiConsole.MarkupLine("\n[yellow]No hay opciones para reservar con los datos ingresados.[/]");
             AnsiConsole.MarkupLine("[grey]El detalle por tramo está en los bloques de ida/vuelta más arriba.[/]");
 
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return;
         }
 
@@ -432,8 +432,7 @@ public sealed class FlightMenu
 
         if (action == "0. Volver sin reservar")
         {
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return;
         }
 
@@ -544,8 +543,7 @@ public sealed class FlightMenu
 
         if (selected == "0. Cancelar")
         {
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return (false, 0);
         }
 
@@ -560,8 +558,7 @@ public sealed class FlightMenu
                 $"Cupo a la venta ahora: [bold]{flight.AvailableSeats.Value}[/] de [bold]{flight.TotalCapacity.Value}[/] de capacidad del vuelo " +
                 $"(si la capacidad es mayor que lo disponible, el resto ya está reservado o el cupo inicial se fijó menor al crear el vuelo).[/]");
             AnsiConsole.MarkupLine("[grey]Elegí otro vuelo o volvé a buscar con otra cantidad de pasajeros.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return (false, 0);
         }
 
@@ -579,12 +576,11 @@ public sealed class FlightMenu
             }
 
             AnsiConsole.WriteLine();
-            bundledObservation = PromptFareBundleSelectionForLegClient(baseForBundle, legTitle);
+                    bundledObservation = await PromptFareBundleSelectionForLegClientAsync(baseForBundle, legTitle);
             if (bundledObservation is null)
             {
                 AnsiConsole.MarkupLine("[grey]Reserva cancelada (no elegiste tarifa o elegiste volver).[/]");
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 return (false, 0);
             }
 
@@ -611,47 +607,21 @@ public sealed class FlightMenu
             .BorderStyle(new Style(Color.FromHex(hex)));
     }
 
-    private static void WriteFareBundleComparisonCards(decimal pBasic, decimal pClassic, decimal pFlex)
+    private static void WriteFareBundleComparisonCards(
+        ClientFareBundleDisplayData policy,
+        decimal refCarryOn,
+        decimal refChecked,
+        decimal pBasic,
+        decimal pClassic,
+        decimal pFlex)
     {
-        var basicWithBags = decimal.Round(pBasic + ReferenceBaggageCarryOnCop + ReferenceBaggageCheckedCop, 0, MidpointRounding.AwayFromZero);
-        var basicBody = """
-            [bold]Incluye[/]
-            [#db2777]✓[/] 1 artículo personal (bolso)
-            [#db2777]✓[/] Acumula 3 millas por USD
-            [grey]$ Equipaje de mano (10 kg) - Desde $70.000 COP[/]
-            [grey]$ Equipaje de bodega (23 kg) - Desde $70.000 COP[/]
-            [grey]$ Check-in en aeropuerto[/]
-            [grey]$ Selección de asientos - Desde $27.000 COP[/]
-            [grey]$ Menú a bordo[/]
-            [grey]$ Cambios antes del vuelo[/]
-            [grey]✗ Reembolsos antes del vuelo[/]
-            """;
-
-        var classicBody = """
-            [bold]Incluye[/]
-            [#6d28d9]✓[/] 1 artículo personal (bolso)
-            [#6d28d9]✓[/] 1 equipaje de mano (10 kg)
-            [#6d28d9]✓[/] 1 equipaje de bodega (23 kg)
-            [#6d28d9]✓[/] Check-in en aeropuerto
-            [#6d28d9]✓[/] Asiento Economy incluido
-            [#6d28d9]✓[/] Acumula 6 millas por USD
-            [grey]$ Menú a bordo[/]
-            [grey]$ Cambios antes del vuelo[/]
-            [grey]✗ Reembolsos antes del vuelo[/]
-            """;
-
-        var flexBody = """
-            [bold]Incluye[/]
-            [#ea580c]✓[/] 1 artículo personal (bolso)
-            [#ea580c]✓[/] 1 equipaje de mano (10 kg)
-            [#ea580c]✓[/] 1 equipaje de bodega (23 kg)
-            [#ea580c]✓[/] Check-in en aeropuerto
-            [#ea580c]✓[/] Asiento Plus
-            [#ea580c]✓[/] Acumula 8 millas por USD
-            [#ea580c]✓[/] Cambios antes del vuelo
-            [#ea580c]✓[/] Reembolsos antes del vuelo
-            [grey]$ Menú a bordo[/]
-            """;
+        var basicWithBags = decimal.Round(pBasic + refCarryOn + refChecked, 0, MidpointRounding.AwayFromZero);
+        var basicBody = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
+            policy.BasicBodyMarkup, refCarryOn, refChecked, policy.SeatSelectionFromCop);
+        var classicBody = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
+            policy.ClassicBodyMarkup, refCarryOn, refChecked, policy.SeatSelectionFromCop);
+        var flexBody = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
+            policy.FlexBodyMarkup, refCarryOn, refChecked, policy.SeatSelectionFromCop);
 
         var p1 = BuildFareBundleTierPanel("Basic", "#db2777", basicBody, basicWithBags, showBestRibbon: false);
         var p2 = BuildFareBundleTierPanel("Classic", "#6d28d9", classicBody, pClassic, showBestRibbon: true);
@@ -667,19 +637,26 @@ public sealed class FlightMenu
     }
 
     /// <summary>Selector Basic/Classic/Flex por tramo (ida o vuelta). Devuelve observación, precio de referencia por pasajero y nombre de tarifa; null si cancela.</summary>
-    private static (string Observation, decimal PricePerPerson, string TierName)? PromptFareBundleSelectionForLegClientWithPrice(decimal basePrice, string legTitle)
+    private static async Task<(string Observation, decimal PricePerPerson, string TierName)?> PromptFareBundleSelectionForLegClientWithPriceAsync(decimal basePrice, string legTitle)
     {
+        using var context = DbContextFactory.Create();
+        var policy = await new GetClientFareBundleDisplayUseCase(new ClientFareBundleDisplayRepository(context)).ExecuteAsync(ct: default);
+        var baggageTypes = await new GetAllBaggageTypesUseCase(new BaggageTypeRepository(context)).ExecuteAsync(ct: default);
+        var carry = baggageTypes.FirstOrDefault(x => string.Equals(x.Name.Value, BaggageCarryOnName, StringComparison.OrdinalIgnoreCase));
+        var checkedB = baggageTypes.FirstOrDefault(x => string.Equals(x.Name.Value, BaggageCheckedName, StringComparison.OrdinalIgnoreCase));
+        var refCarryOn = carry?.BasePriceCop ?? policy.RefCarryOnCop;
+        var refChecked = checkedB?.BasePriceCop ?? policy.RefCheckedCop;
+
         var pBasic = decimal.Round(basePrice, 0);
-        var pClassic = decimal.Round(basePrice * 1.465m, 0);
-        var pFlex = decimal.Round(basePrice * 1.6285m, 0);
-        var basicBaggageRef = ReferenceBaggageCarryOnCop + ReferenceBaggageCheckedCop;
+        var pClassic = decimal.Round(basePrice * policy.ClassicMultiplier, 0);
+        var pFlex = decimal.Round(basePrice * policy.FlexMultiplier, 0);
+        var basicBaggageRef = refCarryOn + refChecked;
         var pBasicTotal = decimal.Round(pBasic + basicBaggageRef, 0, MidpointRounding.AwayFromZero);
 
-        AnsiConsole.MarkupLine($"\n[bold]Opciones de equipaje y tarifa para tu vuelo de {legTitle}[/] [grey](referencia por pasajero; tipos de equipaje los gestiona el administrador)[/]");
-        AnsiConsole.MarkupLine(
-            $"[grey]En [bold]Basic[/] el total de referencia suma al pasaje el equipaje de mano y de bodega ({FormatPriceCopColombia(ReferenceBaggageCarryOnCop)} + {FormatPriceCopColombia(ReferenceBaggageCheckedCop)}). " +
-            "En Classic y Flex ese equipaje va incluido en la tarifa mostrada en las tarjetas.[/]");
-        WriteFareBundleComparisonCards(pBasic, pClassic, pFlex);
+        AnsiConsole.MarkupLine($"\n[bold]Opciones de equipaje y tarifa para tu vuelo de {legTitle}[/] [grey]{Markup.Escape(policy.SubtitleLine)}[/]");
+        var expl = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(policy.ExplainerLine, refCarryOn, refChecked, policy.SeatSelectionFromCop);
+        AnsiConsole.MarkupLine($"[grey]{expl}[/]");
+        WriteFareBundleComparisonCards(policy, refCarryOn, refChecked, pBasic, pClassic, pFlex);
 
         var pick = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
@@ -706,8 +683,8 @@ public sealed class FlightMenu
     }
 
     /// <summary>Selector Basic/Classic/Flex por tramo (ida o vuelta). Devuelve texto para observaciones de la reserva o null si cancela.</summary>
-    private static string? PromptFareBundleSelectionForLegClient(decimal basePrice, string legTitle) =>
-        PromptFareBundleSelectionForLegClientWithPrice(basePrice, legTitle)?.Observation;
+    private static async Task<string?> PromptFareBundleSelectionForLegClientAsync(decimal basePrice, string legTitle) =>
+        (await PromptFareBundleSelectionForLegClientWithPriceAsync(basePrice, legTitle))?.Observation;
 
     private sealed record RoundTripLegPick(
         int FlightId,
@@ -944,8 +921,7 @@ public sealed class FlightMenu
         seatRow.AddRow(idaSeatPanel, vueSeatPanel);
         AnsiConsole.Write(seatRow);
 
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     /// <summary>Solo selección de vuelo + tarifa para ida/vuelta; no crea la reserva.</summary>
@@ -972,8 +948,7 @@ public sealed class FlightMenu
 
         if (selected == "0. Cancelar")
         {
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return null;
         }
 
@@ -986,16 +961,14 @@ public sealed class FlightMenu
             AnsiConsole.MarkupLine(
                 $"\n[red]Este vuelo de {legTitle} no tiene cupo para las {seatCount} persona(s) de la búsqueda. " +
                 $"Cupo a la venta ahora: [bold]{flight.AvailableSeats.Value}[/] de [bold]{flight.TotalCapacity.Value}[/].[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return null;
         }
 
         if (!routeById.TryGetValue(flight.IdRoute, out var route))
         {
             AnsiConsole.MarkupLine("\n[red]No se encontró la ruta de este vuelo en el catálogo.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-            Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return null;
         }
 
@@ -1027,11 +1000,10 @@ public sealed class FlightMenu
             }
 
             AnsiConsole.WriteLine();
-            var farePick = PromptFareBundleSelectionForLegClientWithPrice(baseForBundle, legTitle);
+            var farePick = await PromptFareBundleSelectionForLegClientWithPriceAsync(baseForBundle, legTitle);
             if (farePick is null)
             {
-                AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-                Console.ReadKey();
+                ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
                 return null;
             }
 
@@ -1461,7 +1433,7 @@ public sealed class FlightMenu
             }
             AnsiConsole.Write(table);
         }
-        AnsiConsole.MarkupLine("\n[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla();
     }
 
     private static async Task<int> SelectRouteAsync(CancellationToken ct)
@@ -1618,7 +1590,7 @@ public sealed class FlightMenu
         var nameDefault = $"Tarifa {airlineId} {flightDate:yyyyMM}";
         var name = AnsiConsole.Prompt(new TextPrompt<string>($"Nombre de la tarifa (Enter = {Markup.Escape(nameDefault)}):")
             .DefaultValue(nameDefault));
-        
+
         // Detectar clases reales del avión según sus asientos.
         async Task<List<(int IdClase, int Count)>> LoadSeatGroupsAsync()
         {
@@ -1955,6 +1927,18 @@ public sealed class FlightMenu
 
             var idStatus = await SelectStatusAsync("Estado inicial de ambos vuelos:", ct);
             var idCrew = await SelectCrewAsync(ct);
+            var gateOut = (AnsiConsole.Prompt(
+                    new TextPrompt<string>("IDA — Puerta de embarque (ej. A12):")
+                        .DefaultValue("A12")
+                        .AllowEmpty())
+                ?? "A12").Trim();
+            if (string.IsNullOrEmpty(gateOut)) gateOut = "A12";
+            var gateRet = (AnsiConsole.Prompt(
+                    new TextPrompt<string>("VUELTA — Puerta de embarque (Enter = misma que ida):")
+                        .DefaultValue(gateOut)
+                        .AllowEmpty())
+                ?? gateOut).Trim();
+            if (string.IsNullOrEmpty(gateRet)) gateRet = gateOut;
 
             // Tarifa (por clase) para cada fecha
             var idFareOut = await EnsureFareForAirlineAndDateAsync(airlineId, idAircraft, dateOutbound, ct);
@@ -1963,11 +1947,11 @@ public sealed class FlightMenu
             using var context = DbContextFactory.Create();
             var flightRepo = new FlightRepository(context);
             await new CreateFlightUseCase(flightRepo)
-                .ExecuteAsync(numOut, dateOutbound, depOut, arrOut, capacity, seatsToSell, idRouteOut, idAircraft, idStatus, idCrew, idFareOut, ct);
+                .ExecuteAsync(numOut, dateOutbound, depOut, arrOut, capacity, seatsToSell, idRouteOut, idAircraft, idStatus, idCrew, idFareOut, gateOut, ct);
             await context.SaveChangesAsync(ct);
 
             await new CreateFlightUseCase(flightRepo)
-                .ExecuteAsync(numRet, dateReturn, depRet, arrRet, capacity, seatsToSell, routeRet.Id.Value, idAircraft, idStatus, idCrew, idFareRet, ct);
+                .ExecuteAsync(numRet, dateReturn, depRet, arrRet, capacity, seatsToSell, routeRet.Id.Value, idAircraft, idStatus, idCrew, idFareRet, gateRet, ct);
             await context.SaveChangesAsync(ct);
 
             var all = await new GetAllFlightsUseCase(flightRepo).ExecuteAsync(ct);
@@ -1989,8 +1973,7 @@ public sealed class FlightMenu
             EntityPersistenceUiFeedback.Write(ex);
         }
 
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]");
-        Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task CreateGuidedAsync(CancellationToken ct)
@@ -2010,7 +1993,7 @@ public sealed class FlightMenu
         catch (Exception ex)
         {
             EntityPersistenceUiFeedback.Write(ex);
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
             return;
         }
 
@@ -2033,12 +2016,12 @@ public sealed class FlightMenu
         if (date < DateOnly.FromDateTime(DateTime.Today))
         {
             AnsiConsole.MarkupLine("\n[red]La fecha del vuelo no puede ser anterior a hoy.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
         if (arr <= dep)
         {
             AnsiConsole.MarkupLine("\n[red]La hora de llegada debe ser posterior a la hora de salida.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
         try
         {
@@ -2056,10 +2039,16 @@ public sealed class FlightMenu
 
             // Integración solicitada: tarifa dentro del flujo de publicación del vuelo.
             var idFare = await EnsureFareForAirlineAndDateAsync(airlineId, idAircraft, date, ct);
+            var gate = (AnsiConsole.Prompt(
+                    new TextPrompt<string>("Puerta de embarque (ej. A12):")
+                        .DefaultValue("A12")
+                        .AllowEmpty())
+                ?? "A12").Trim();
+            if (string.IsNullOrEmpty(gate)) gate = "A12";
 
             using var context = DbContextFactory.Create();
             var flight = await new CreateFlightUseCase(new FlightRepository(context))
-                .ExecuteAsync(number, date, dep, arr, capacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare, ct);
+                .ExecuteAsync(number, date, dep, arr, capacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare, gate, ct);
             await context.SaveChangesAsync(ct);
 
             var createdId = (await new GetAllFlightsUseCase(new FlightRepository(context)).ExecuteAsync(ct))
@@ -2082,7 +2071,7 @@ public sealed class FlightMenu
                 await GenerateSeatFlightsAutoAsync(createdId, idAircraft, capacity, ct);
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task GenerateSeatFlightsAutoAsync(int idFlight, int idAircraft, int aircraftCapacity, CancellationToken ct)
@@ -2252,12 +2241,12 @@ public sealed class FlightMenu
         if (date < DateOnly.FromDateTime(DateTime.Today))
         {
             AnsiConsole.MarkupLine("\n[red]La fecha del vuelo no puede ser anterior a hoy.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
         if (arr <= dep)
         {
             AnsiConsole.MarkupLine("\n[red]La hora de llegada debe ser posterior a la hora de salida.[/]");
-            AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey(); return;
+            ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false); return;
         }
         try
         {
@@ -2277,14 +2266,20 @@ public sealed class FlightMenu
             using var lookupCtx = DbContextFactory.Create();
             var current = await new GetFlightByIdUseCase(new FlightRepository(lookupCtx)).ExecuteAsync(id, ct);
             var idFare = current.IdFare;
+            var gateU = (AnsiConsole.Prompt(
+                    new TextPrompt<string>("Puerta de embarque (Enter = mantener actual):")
+                        .DefaultValue(current.BoardingGate)
+                        .AllowEmpty())
+                ?? current.BoardingGate).Trim();
+            if (string.IsNullOrEmpty(gateU)) gateU = current.BoardingGate;
             using var context = DbContextFactory.Create();
             await new UpdateFlightUseCase(new FlightRepository(context))
-                .ExecuteAsync(id, number, date, dep, arr, capacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare, ct);
+                .ExecuteAsync(id, number, date, dep, arr, capacity, availableSeats, idRoute, idAircraft, idStatus, idCrew, idFare, gateU, ct);
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Vuelo actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task AddStatusHistoryAsync(CancellationToken ct)
@@ -2321,12 +2316,13 @@ public sealed class FlightMenu
                     idStatus,
                     flight.IdCrew,
                     flight.IdFare,
+                    flight.BoardingGate,
                     ct);
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Estado del vuelo actualizado (historial + estado actual).[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
     private static async Task DeleteAsync(CancellationToken ct)
@@ -2347,6 +2343,6 @@ public sealed class FlightMenu
             AnsiConsole.MarkupLine(deleted ? "\n[green]Vuelo eliminado correctamente.[/]" : "\n[yellow]No se encontró el vuelo con ese ID.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
-        AnsiConsole.MarkupLine("[grey]Presiona cualquier tecla para continuar...[/]"); Console.ReadKey();
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 }

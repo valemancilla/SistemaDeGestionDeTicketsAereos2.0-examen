@@ -10,12 +10,10 @@ namespace SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 /// </summary>
 public static class BookingPaidBundleBaggageProvisioner
 {
-    /// <summary>Peso de referencia por pasajero (mano + bodega, alineado al texto comercial de búsqueda de vuelos).</summary>
-    private const decimal ReferenceBundleKilogramsPerPassenger = 33m;
-
-    private const int BaggageTypeBasicBundle = 4;
-    private const int BaggageTypeClassicBundle = 5;
-    private const int BaggageTypeFlexBundle = 6;
+    // Los bundles Basic/Classic/Flex NO son tipos de equipaje. Cuando se necesita materializar equipaje incluido,
+    // se usan los tipos reales: mano (1) y bodega (2).
+    private const int BaggageTypeCarryOn = 1;
+    private const int BaggageTypeChecked = 2;
 
     /// <returns>Basic, Classic, Flex o null si no hay texto de bundle cliente.</returns>
     public static string? DetectClientFareBundleTier(string? observations)
@@ -41,7 +39,7 @@ public static class BookingPaidBundleBaggageProvisioner
 
     /// <summary>
     /// Si el tiquete no tiene equipaje y la reserva indica bundle Basic/Classic/Flex, crea un registro de equipaje
-    /// (tipos semilla 4–6). Idempotente: no hace nada si ya hay cualquier equipaje en el tiquete.
+    /// (solo tipos reales de equipaje). Idempotente: no hace nada si ya hay cualquier equipaje en el tiquete.
     /// </summary>
     public static async Task TryProvisionIfNoBaggageAsync(
         AppDbContext context,
@@ -59,26 +57,23 @@ public static class BookingPaidBundleBaggageProvisioner
         if (tier is null)
             return;
 
-        var slots = Math.Max(1, passengerSlots);
-        var totalWeight = decimal.Round(ReferenceBundleKilogramsPerPassenger * slots, 2, MidpointRounding.AwayFromZero);
-        var idType = tier switch
-        {
-            "Basic" => BaggageTypeBasicBundle,
-            "Classic" => BaggageTypeClassicBundle,
-            "Flex" => BaggageTypeFlexBundle,
-            _ => 0
-        };
-
-        if (idType == 0)
-            return;
-
         try
         {
-            await new CreateBaggageUseCase(repo).ExecuteAsync(totalWeight, idTicket, idType, ct);
+            // Basic: solo artículo personal (bolso) → no se materializa como equipaje.
+            if (string.Equals(tier, "Basic", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            // Classic/Flex: incluye mano (10kg) y bodega (23kg) por pasajero.
+            var slots = Math.Max(1, passengerSlots);
+            var totalCarryOn = decimal.Round(10m * slots, 2, MidpointRounding.AwayFromZero);
+            var totalChecked = decimal.Round(23m * slots, 2, MidpointRounding.AwayFromZero);
+
+            await new CreateBaggageUseCase(repo).ExecuteAsync(totalCarryOn, idTicket, BaggageTypeCarryOn, ct);
+            await new CreateBaggageUseCase(repo).ExecuteAsync(totalChecked, idTicket, BaggageTypeChecked, ct);
         }
         catch (Exception)
         {
-            // FK si los tipos 4–6 no existen en BD (migración pendiente) u otra inconsistencia: no bloquea emisión ni check-in.
+            // Cualquier inconsistencia: no bloquea emisión ni check-in.
         }
     }
 }

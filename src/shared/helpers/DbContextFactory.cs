@@ -1,3 +1,4 @@
+// Fábrica de AppDbContext para consola: lee appsettings.json (cadena MySqlDB) y configura Pomelo MySQL.
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
