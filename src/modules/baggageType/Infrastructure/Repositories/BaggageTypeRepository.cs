@@ -49,6 +49,10 @@ public sealed class BaggageTypeRepository : IBaggageTypeRepository
 
         var values = ToEntity(baggageType);
         entity.TypeName = values.TypeName;
+        entity.WeightKg = values.WeightKg;
+        entity.BasePriceCop = values.BasePriceCop;
+        entity.Description = values.Description;
+        entity.IsActive = values.IsActive;
     }
 
     public async Task DeleteAsync(BaggageTypeId id, CancellationToken ct = default)
@@ -65,7 +69,13 @@ public sealed class BaggageTypeRepository : IBaggageTypeRepository
 
     private static BaggageType ToDomain(BaggageTypeEntity entity)
     {
-        return BaggageType.Create(entity.IdBaggageType, entity.TypeName);
+        return BaggageType.Create(
+            entity.IdBaggageType,
+            entity.TypeName,
+            entity.WeightKg,
+            entity.BasePriceCop,
+            entity.Description,
+            entity.IsActive);
     }
 
     private static BaggageTypeEntity ToEntity(BaggageType aggregate)
@@ -73,7 +83,11 @@ public sealed class BaggageTypeRepository : IBaggageTypeRepository
         return new BaggageTypeEntity
         {
             IdBaggageType = aggregate.Id.Value,
-            TypeName = aggregate.Name.Value
+            TypeName = aggregate.Name.Value,
+            WeightKg = aggregate.WeightKg,
+            BasePriceCop = aggregate.BasePriceCop,
+            Description = aggregate.Description,
+            IsActive = aggregate.IsActive
         };
     }
 }

@@ -24,14 +24,30 @@ public sealed class BaggageTypeEntityConfiguration : IEntityTypeConfiguration<Ba
             .HasColumnType("varchar(50)")
             .IsRequired();
 
+        builder.Property(x => x.WeightKg)
+            .HasColumnName("WeightKg")
+            .HasColumnType("decimal(6,2)")
+            .IsRequired();
+
+        builder.Property(x => x.BasePriceCop)
+            .HasColumnName("BasePriceCop")
+            .HasColumnType("decimal(12,2)")
+            .IsRequired();
+
+        builder.Property(x => x.Description)
+            .HasColumnName("Description")
+            .HasColumnType("varchar(500)");
+
+        builder.Property(x => x.IsActive)
+            .HasColumnName("IsActive")
+            .HasColumnType("tinyint(1)")
+            .IsRequired();
+
         builder.HasData(
-            new BaggageTypeEntity { IdBaggageType = 1, TypeName = "Equipaje de mano" },
-            new BaggageTypeEntity { IdBaggageType = 2, TypeName = "Equipaje de bodega" },
-            new BaggageTypeEntity { IdBaggageType = 3, TypeName = "Equipaje especial" },
-            // Coinciden con la tarifa Business/Client (Basic, Classic, Flex) al comprar; para listar «equipaje» con la opción elegida.
-            new BaggageTypeEntity { IdBaggageType = 4, TypeName = "Tarifa Basic (elegida al comprar)" },
-            new BaggageTypeEntity { IdBaggageType = 5, TypeName = "Tarifa Classic (elegida al comprar)" },
-            new BaggageTypeEntity { IdBaggageType = 6, TypeName = "Tarifa Flex (elegida al comprar)" }
+            new BaggageTypeEntity { IdBaggageType = 1, TypeName = "Equipaje de mano", WeightKg = 10m, BasePriceCop = 70_000m, Description = "Equipaje de mano (10 kg).", IsActive = true },
+            new BaggageTypeEntity { IdBaggageType = 2, TypeName = "Equipaje de bodega", WeightKg = 23m, BasePriceCop = 70_000m, Description = "Equipaje de bodega (23 kg).", IsActive = true },
+            new BaggageTypeEntity { IdBaggageType = 3, TypeName = "Equipaje especial", WeightKg = 0m, BasePriceCop = 0m, Description = "Equipaje especial.", IsActive = true },
+            new BaggageTypeEntity { IdBaggageType = 7, TypeName = "Artículo personal (bolso)", WeightKg = 0m, BasePriceCop = 0m, Description = "Artículo personal (bolso).", IsActive = true }
         );
     }
 }

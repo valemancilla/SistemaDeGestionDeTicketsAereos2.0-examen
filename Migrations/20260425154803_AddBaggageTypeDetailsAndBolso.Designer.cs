@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 
@@ -11,9 +12,11 @@ using SistemaDeGestionDeTicketsAereos.src.shared.context;
 namespace SistemaDeGestionDeTicketsAereos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260425154803_AddBaggageTypeDetailsAndBolso")]
+    partial class AddBaggageTypeDetailsAndBolso
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -393,6 +396,30 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                             Description = "Artículo personal (bolso).",
                             IsActive = true,
                             TypeName = "Artículo personal (bolso)",
+                            WeightKg = 0m
+                        },
+                        new
+                        {
+                            IdBaggageType = 4,
+                            BasePriceCop = 0m,
+                            IsActive = false,
+                            TypeName = "Tarifa Basic (elegida al comprar)",
+                            WeightKg = 0m
+                        },
+                        new
+                        {
+                            IdBaggageType = 5,
+                            BasePriceCop = 0m,
+                            IsActive = false,
+                            TypeName = "Tarifa Classic (elegida al comprar)",
+                            WeightKg = 0m
+                        },
+                        new
+                        {
+                            IdBaggageType = 6,
+                            BasePriceCop = 0m,
+                            IsActive = false,
+                            TypeName = "Tarifa Flex (elegida al comprar)",
                             WeightKg = 0m
                         });
                 });

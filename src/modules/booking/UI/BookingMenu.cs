@@ -526,16 +526,79 @@ public sealed class BookingMenu
         if (!bookings.Any()) { AnsiConsole.MarkupLine("[yellow]No hay reservas registradas.[/]"); }
         else
         {
+            // Cargar datos del titular tal como se capturan al crear la reserva (BookingEntity.Holder* / IdHolderPerson).
+            var bookingRows = await context.Set<BookingEntity>()
+                .AsNoTracking()
+                .Select(b => new
+                {
+                    b.IdBooking,
+                    b.HolderEmail,
+                    b.HolderPhonePrefix,
+                    b.HolderPhone,
+                    b.ConsentDataProcessing,
+                    b.ConsentMarketing,
+                    b.IdHolderPerson
+                })
+                .ToListAsync(ct);
+            var rowById = bookingRows.ToDictionary(x => x.IdBooking);
+
+            // Fallback: si no hay IdHolderPerson (titular/contacto no completado),
+            // usar el pasajero marcado como titular de plaza (BookingCustomer.IsPrimary).
+            var linksAll = await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct);
+            var primaryPersonByBookingId = linksAll
+                .Where(l => l.IsPrimary)
+                .GroupBy(l => l.IdBooking)
+                .ToDictionary(g => g.Key, g => g.First().IdPerson);
+
+            var holderIds = bookingRows
+                .Where(x => x.IdHolderPerson.HasValue)
+                .Select(x => x.IdHolderPerson!.Value)
+                .Distinct()
+                .ToList();
+            foreach (var pid in primaryPersonByBookingId.Values)
+                holderIds.Add(pid);
+            holderIds = holderIds.Distinct().ToList();
+            var holders = holderIds.Count == 0
+                ? new List<PersonEntity>()
+                : await context.Set<PersonEntity>()
+                    .AsNoTracking()
+                    .Where(p => holderIds.Contains(p.IdPerson))
+                    .ToListAsync(ct);
+            var holderById = holders.ToDictionary(h => h.IdPerson);
+
             var table = new Table().Border(TableBorder.Rounded);
             table.AddColumn("ID"); table.AddColumn("Código"); table.AddColumn("Vuelo");
             table.AddColumn("Fecha Vuelo"); table.AddColumn("Asientos"); table.AddColumn("Estado");
+            table.AddColumn("Titular");
+            table.AddColumn("Doc. titular");
+            table.AddColumn("Email titular");
+            table.AddColumn("Teléfono");
+            table.AddColumn("Datos");
+            table.AddColumn("Marketing");
             foreach (var b in bookings)
             {
                 var flight = flightMap.TryGetValue(b.IdFlight, out var fn) ? fn : b.IdFlight.ToString();
                 var status = statusMap.TryGetValue(b.IdStatus, out var sn) ? sn : b.IdStatus.ToString();
+                rowById.TryGetValue(b.Id.Value, out var row);
+                int? holderPersonId = row?.IdHolderPerson;
+                if (holderPersonId is null && primaryPersonByBookingId.TryGetValue(b.Id.Value, out var primPid))
+                    holderPersonId = primPid;
+                var holder = holderPersonId is int hid && holderById.TryGetValue(hid, out var p) ? p : null;
+                var holderName = holder is null ? "—" : $"{holder.FirstName} {holder.LastName}".Trim();
+                var holderDoc = holder?.DocumentNumber ?? "—";
+                var email = string.IsNullOrWhiteSpace(row?.HolderEmail) ? "—" : row!.HolderEmail!;
+                var phone = string.IsNullOrWhiteSpace(row?.HolderPhone) ? "—" : $"{row!.HolderPhonePrefix}{row.HolderPhone}";
+                var consentDp = row?.ConsentDataProcessing == true ? "Sí" : "No";
+                var consentMk = row?.ConsentMarketing == true ? "Sí" : "No";
                 table.AddRow(b.Id.Value.ToString(), Markup.Escape(b.Code.Value),
                     Markup.Escape(flight), b.FlightDate.Value.ToString("yyyy-MM-dd HH:mm"),
-                    b.SeatCount.Value.ToString(), Markup.Escape(status));
+                    b.SeatCount.Value.ToString(), Markup.Escape(status),
+                    Markup.Escape(holderName),
+                    Markup.Escape(holderDoc),
+                    Markup.Escape(email),
+                    Markup.Escape(phone),
+                    Markup.Escape(consentDp),
+                    Markup.Escape(consentMk));
             }
             AnsiConsole.Write(table);
         }

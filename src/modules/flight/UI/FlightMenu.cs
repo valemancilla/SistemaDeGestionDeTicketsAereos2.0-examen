@@ -47,6 +47,11 @@ using SistemaDeGestionDeTicketsAereos.src.modules.bookingCustomer.Infrastructure
 using SistemaDeGestionDeTicketsAereos.src.modules.seat.Domain.aggregate;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.clientFareBundleDisplay.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.clientFareBundleDisplay.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.clientFareBundleDisplay.Domain;
+using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.baggageType.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
@@ -56,10 +61,8 @@ namespace SistemaDeGestionDeTicketsAereos.src.modules.flight.UI;
 
 public sealed class FlightMenu
 {
-    /// <summary>Referencia COP alineada con el texto de la tarifa Basic (equipaje de pago adicional al pasaje base).</summary>
-    private const decimal ReferenceBaggageCarryOnCop = 70_000m;
-
-    private const decimal ReferenceBaggageCheckedCop = 70_000m;
+    private const string BaggageCarryOnName = "Equipaje de mano";
+    private const string BaggageCheckedName = "Equipaje de bodega";
 
     /// <summary>Mismos datos que el cliente ingresa en «Buscar vuelos» antes de consultar la base.</summary>
     private sealed record ClientTripSearchCriteria(
@@ -573,7 +576,7 @@ public sealed class FlightMenu
             }
 
             AnsiConsole.WriteLine();
-            bundledObservation = PromptFareBundleSelectionForLegClient(baseForBundle, legTitle);
+                    bundledObservation = await PromptFareBundleSelectionForLegClientAsync(baseForBundle, legTitle);
             if (bundledObservation is null)
             {
                 AnsiConsole.MarkupLine("[grey]Reserva cancelada (no elegiste tarifa o elegiste volver).[/]");
@@ -604,47 +607,21 @@ public sealed class FlightMenu
             .BorderStyle(new Style(Color.FromHex(hex)));
     }
 
-    private static void WriteFareBundleComparisonCards(decimal pBasic, decimal pClassic, decimal pFlex)
+    private static void WriteFareBundleComparisonCards(
+        ClientFareBundleDisplayData policy,
+        decimal refCarryOn,
+        decimal refChecked,
+        decimal pBasic,
+        decimal pClassic,
+        decimal pFlex)
     {
-        var basicWithBags = decimal.Round(pBasic + ReferenceBaggageCarryOnCop + ReferenceBaggageCheckedCop, 0, MidpointRounding.AwayFromZero);
-        var basicBody = """
-            [bold]Incluye[/]
-            [#db2777]✓[/] 1 artículo personal (bolso)
-            [#db2777]✓[/] Acumula 3 millas por USD
-            [grey]$ Equipaje de mano (10 kg) - Desde $70.000 COP[/]
-            [grey]$ Equipaje de bodega (23 kg) - Desde $70.000 COP[/]
-            [grey]$ Check-in en aeropuerto[/]
-            [grey]$ Selección de asientos - Desde $27.000 COP[/]
-            [grey]$ Menú a bordo[/]
-            [grey]$ Cambios antes del vuelo[/]
-            [grey]✗ Reembolsos antes del vuelo[/]
-            """;
-
-        var classicBody = """
-            [bold]Incluye[/]
-            [#6d28d9]✓[/] 1 artículo personal (bolso)
-            [#6d28d9]✓[/] 1 equipaje de mano (10 kg)
-            [#6d28d9]✓[/] 1 equipaje de bodega (23 kg)
-            [#6d28d9]✓[/] Check-in en aeropuerto
-            [#6d28d9]✓[/] Asiento Economy incluido
-            [#6d28d9]✓[/] Acumula 6 millas por USD
-            [grey]$ Menú a bordo[/]
-            [grey]$ Cambios antes del vuelo[/]
-            [grey]✗ Reembolsos antes del vuelo[/]
-            """;
-
-        var flexBody = """
-            [bold]Incluye[/]
-            [#ea580c]✓[/] 1 artículo personal (bolso)
-            [#ea580c]✓[/] 1 equipaje de mano (10 kg)
-            [#ea580c]✓[/] 1 equipaje de bodega (23 kg)
-            [#ea580c]✓[/] Check-in en aeropuerto
-            [#ea580c]✓[/] Asiento Plus
-            [#ea580c]✓[/] Acumula 8 millas por USD
-            [#ea580c]✓[/] Cambios antes del vuelo
-            [#ea580c]✓[/] Reembolsos antes del vuelo
-            [grey]$ Menú a bordo[/]
-            """;
+        var basicWithBags = decimal.Round(pBasic + refCarryOn + refChecked, 0, MidpointRounding.AwayFromZero);
+        var basicBody = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
+            policy.BasicBodyMarkup, refCarryOn, refChecked, policy.SeatSelectionFromCop);
+        var classicBody = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
+            policy.ClassicBodyMarkup, refCarryOn, refChecked, policy.SeatSelectionFromCop);
+        var flexBody = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
+            policy.FlexBodyMarkup, refCarryOn, refChecked, policy.SeatSelectionFromCop);
 
         var p1 = BuildFareBundleTierPanel("Basic", "#db2777", basicBody, basicWithBags, showBestRibbon: false);
         var p2 = BuildFareBundleTierPanel("Classic", "#6d28d9", classicBody, pClassic, showBestRibbon: true);
@@ -660,19 +637,26 @@ public sealed class FlightMenu
     }
 
     /// <summary>Selector Basic/Classic/Flex por tramo (ida o vuelta). Devuelve observación, precio de referencia por pasajero y nombre de tarifa; null si cancela.</summary>
-    private static (string Observation, decimal PricePerPerson, string TierName)? PromptFareBundleSelectionForLegClientWithPrice(decimal basePrice, string legTitle)
+    private static async Task<(string Observation, decimal PricePerPerson, string TierName)?> PromptFareBundleSelectionForLegClientWithPriceAsync(decimal basePrice, string legTitle)
     {
+        using var context = DbContextFactory.Create();
+        var policy = await new GetClientFareBundleDisplayUseCase(new ClientFareBundleDisplayRepository(context)).ExecuteAsync(ct: default);
+        var baggageTypes = await new GetAllBaggageTypesUseCase(new BaggageTypeRepository(context)).ExecuteAsync(ct: default);
+        var carry = baggageTypes.FirstOrDefault(x => string.Equals(x.Name.Value, BaggageCarryOnName, StringComparison.OrdinalIgnoreCase));
+        var checkedB = baggageTypes.FirstOrDefault(x => string.Equals(x.Name.Value, BaggageCheckedName, StringComparison.OrdinalIgnoreCase));
+        var refCarryOn = carry?.BasePriceCop ?? policy.RefCarryOnCop;
+        var refChecked = checkedB?.BasePriceCop ?? policy.RefCheckedCop;
+
         var pBasic = decimal.Round(basePrice, 0);
-        var pClassic = decimal.Round(basePrice * 1.465m, 0);
-        var pFlex = decimal.Round(basePrice * 1.6285m, 0);
-        var basicBaggageRef = ReferenceBaggageCarryOnCop + ReferenceBaggageCheckedCop;
+        var pClassic = decimal.Round(basePrice * policy.ClassicMultiplier, 0);
+        var pFlex = decimal.Round(basePrice * policy.FlexMultiplier, 0);
+        var basicBaggageRef = refCarryOn + refChecked;
         var pBasicTotal = decimal.Round(pBasic + basicBaggageRef, 0, MidpointRounding.AwayFromZero);
 
-        AnsiConsole.MarkupLine($"\n[bold]Opciones de equipaje y tarifa para tu vuelo de {legTitle}[/] [grey](referencia por pasajero; tipos de equipaje los gestiona el administrador)[/]");
-        AnsiConsole.MarkupLine(
-            $"[grey]En [bold]Basic[/] el total de referencia suma al pasaje el equipaje de mano y de bodega ({FormatPriceCopColombia(ReferenceBaggageCarryOnCop)} + {FormatPriceCopColombia(ReferenceBaggageCheckedCop)}). " +
-            "En Classic y Flex ese equipaje va incluido en la tarifa mostrada en las tarjetas.[/]");
-        WriteFareBundleComparisonCards(pBasic, pClassic, pFlex);
+        AnsiConsole.MarkupLine($"\n[bold]Opciones de equipaje y tarifa para tu vuelo de {legTitle}[/] [grey]{Markup.Escape(policy.SubtitleLine)}[/]");
+        var expl = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(policy.ExplainerLine, refCarryOn, refChecked, policy.SeatSelectionFromCop);
+        AnsiConsole.MarkupLine($"[grey]{expl}[/]");
+        WriteFareBundleComparisonCards(policy, refCarryOn, refChecked, pBasic, pClassic, pFlex);
 
         var pick = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
@@ -699,8 +683,8 @@ public sealed class FlightMenu
     }
 
     /// <summary>Selector Basic/Classic/Flex por tramo (ida o vuelta). Devuelve texto para observaciones de la reserva o null si cancela.</summary>
-    private static string? PromptFareBundleSelectionForLegClient(decimal basePrice, string legTitle) =>
-        PromptFareBundleSelectionForLegClientWithPrice(basePrice, legTitle)?.Observation;
+    private static async Task<string?> PromptFareBundleSelectionForLegClientAsync(decimal basePrice, string legTitle) =>
+        (await PromptFareBundleSelectionForLegClientWithPriceAsync(basePrice, legTitle))?.Observation;
 
     private sealed record RoundTripLegPick(
         int FlightId,
@@ -1016,7 +1000,7 @@ public sealed class FlightMenu
             }
 
             AnsiConsole.WriteLine();
-            var farePick = PromptFareBundleSelectionForLegClientWithPrice(baseForBundle, legTitle);
+            var farePick = await PromptFareBundleSelectionForLegClientWithPriceAsync(baseForBundle, legTitle);
             if (farePick is null)
             {
                 ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);

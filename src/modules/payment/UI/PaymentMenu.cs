@@ -14,6 +14,7 @@ using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Application.UseCa
 using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.payment.Application.Services;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
@@ -174,6 +175,8 @@ public sealed class PaymentMenu
         return match.Id.Value;
     }
 
+    private static readonly TicketIssuanceAfterPaymentService _ticketIssuance = new();
+
     private static async Task<int> SelectPaymentMethodAsync(CancellationToken ct)
     {
         using var context = DbContextFactory.Create();
@@ -284,6 +287,9 @@ public sealed class PaymentMenu
                     await new CreateBookingStatusHistoryUseCase(new BookingStatusHistoryRepository(context))
                         .ExecuteAsync(DateTime.Now, historyNote, booking.Id.Value, targetBookingStatusId, AppState.IdUser, ct);
                 }
+
+                // Nuevo: al finalizar pago aprobado, emitir automáticamente los tiquetes de la reserva.
+                await _ticketIssuance.EmitTicketsForBookingAsync(context, idBooking, ct);
             }
 
             await context.SaveChangesAsync(ct);
@@ -344,6 +350,49 @@ public sealed class PaymentMenu
 
             await new UpdatePaymentUseCase(new PaymentRepository(context))
                 .ExecuteAsync(id, amount, DateTime.Now, idBooking, idMethod, idStatus, idTicket, ct);
+
+            // Si el pago queda APROBADO, la reserva pasa a Pagada y se emiten tiquetes automáticamente.
+            var approvedId = await GetStatusIdByNameAsync(PaymentEntityType, PaymentStatusApproved, ct);
+            if (idStatus == approvedId)
+            {
+                var bookingRepo = new BookingRepository(context);
+                var booking = await new GetBookingByIdUseCase(bookingRepo).ExecuteAsync(idBooking, ct);
+                var canceledId = await GetStatusIdByNameAsync(BookingEntityType, "Cancelada", ct);
+                if (booking.IdStatus != canceledId)
+                {
+                    int targetBookingStatusId;
+                    string historyNote;
+                    try
+                    {
+                        targetBookingStatusId = await GetStatusIdByNameAsync(BookingEntityType, BookingStatusPaid, ct);
+                        historyNote = "Reserva en estado Pagada por pago aprobado.";
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        targetBookingStatusId = await GetStatusIdByNameAsync(BookingEntityType, BookingStatusConfirmed, ct);
+                        historyNote = "Reserva confirmada por pago aprobado (estado Pagada no disponible en catálogo).";
+                    }
+
+                    if (booking.IdStatus != targetBookingStatusId)
+                    {
+                        await new UpdateBookingUseCase(bookingRepo)
+                            .ExecuteAsync(
+                                booking.Id.Value,
+                                booking.Code.Value,
+                                booking.FlightDate.Value,
+                                booking.CreationDate.Value,
+                                booking.SeatCount.Value,
+                                booking.Observations.Value,
+                                booking.IdFlight,
+                                targetBookingStatusId,
+                                ct);
+                        await new CreateBookingStatusHistoryUseCase(new BookingStatusHistoryRepository(context))
+                            .ExecuteAsync(DateTime.Now, historyNote, booking.Id.Value, targetBookingStatusId, AppState.IdUser, ct);
+                    }
+                }
+
+                await _ticketIssuance.EmitTicketsForBookingAsync(context, idBooking, ct);
+            }
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Pago actualizado correctamente.[/]");
         }

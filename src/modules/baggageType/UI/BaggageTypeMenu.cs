@@ -10,6 +10,8 @@ namespace SistemaDeGestionDeTicketsAereos.src.modules.baggageType.UI;
 
 public sealed class BaggageTypeMenu
 {
+    private const string BaggageCarryOnName = "Equipaje de mano";
+    private const string BaggageCheckedName = "Equipaje de bodega";
     public async Task RunAsync(CancellationToken ct = default)
     {
         bool back = false;
@@ -24,8 +26,9 @@ public sealed class BaggageTypeMenu
                         "1. Crear tipo",
                         "2. Listar tipos",
                         "3. Actualizar tipo",
-                        "4. Eliminar tipo",
-                        "5. Política tarifas en cliente (Basic/Classic/Flex)",
+                        "4. Activar / desactivar tipo",
+                        "5. Eliminar tipo",
+                        "6. Política tarifas en cliente (Basic/Classic/Flex)",
                         "0. Volver"));
 
             switch (option)
@@ -33,8 +36,9 @@ public sealed class BaggageTypeMenu
                 case "1. Crear tipo": await CreateAsync(ct); break;
                 case "2. Listar tipos": await ListAsync(ct); break;
                 case "3. Actualizar tipo": await UpdateAsync(ct); break;
-                case "4. Eliminar tipo": await DeleteAsync(ct); break;
-                case "5. Política tarifas en cliente (Basic/Classic/Flex)":
+                case "4. Activar / desactivar tipo": await ToggleActiveAsync(ct); break;
+                case "5. Eliminar tipo": await DeleteAsync(ct); break;
+                case "6. Política tarifas en cliente (Basic/Classic/Flex)":
                     await RunClientFareBundleDisplayPolicyAsync(ct);
                     break;
                 case "0. Volver": back = true; break;
@@ -51,9 +55,18 @@ public sealed class BaggageTypeMenu
         else
         {
             var table = new Table().Border(TableBorder.Rounded);
-            table.AddColumn("ID"); table.AddColumn("Nombre");
+            table.AddColumn("ID");
+            table.AddColumn("Nombre");
+            table.AddColumn("Peso (kg)");
+            table.AddColumn("Precio base (COP)");
+            table.AddColumn("Activo");
             foreach (var b in items)
-                table.AddRow(b.Id.Value.ToString(), Markup.Escape(b.Name.Value));
+                table.AddRow(
+                    b.Id.Value.ToString(),
+                    Markup.Escape(b.Name.Value),
+                    b.WeightKg.ToString("0.##"),
+                    b.BasePriceCop.ToString("0"),
+                    b.IsActive ? "Sí" : "No");
             AnsiConsole.Write(table);
         }
         ConsolaPausa.PresionarCualquierTecla();
@@ -65,11 +78,16 @@ public sealed class BaggageTypeMenu
         AnsiConsole.Write(new Rule("[yellow]CREAR TIPO DE EQUIPAJE[/]").Centered());
         if (!AnsiConsole.Confirm("¿Deseas crear un tipo de equipaje?", true))
             return;
-        var name = AnsiConsole.Ask<string>("Nombre (ej: Equipaje de mano, Bodega, Especial):");
+        var name = AnsiConsole.Ask<string>("Nombre (ej: Artículo personal (bolso), Equipaje de mano, Equipaje de bodega):");
+        var weight = AnsiConsole.Prompt(new TextPrompt<decimal>("Peso (kg, 0 si no aplica):").DefaultValue(0m));
+        var price = AnsiConsole.Prompt(new TextPrompt<decimal>("Precio base (COP, 0 si incluido):").DefaultValue(0m));
+        var desc = AnsiConsole.Prompt(new TextPrompt<string>("Descripción (Enter para omitir):").AllowEmpty());
+        var active = AnsiConsole.Confirm("¿Activo?", true);
         try
         {
             using var context = DbContextFactory.Create();
-            var result = await new CreateBaggageTypeUseCase(new BaggageTypeRepository(context)).ExecuteAsync(name, ct);
+            var result = await new CreateBaggageTypeUseCase(new BaggageTypeRepository(context))
+                .ExecuteAsync(name, weight, price, string.IsNullOrWhiteSpace(desc) ? null : desc, active, ct);
             await context.SaveChangesAsync(ct);
 
             var createdId = (await new GetAllBaggageTypesUseCase(new BaggageTypeRepository(context)).ExecuteAsync(ct))
@@ -92,15 +110,57 @@ public sealed class BaggageTypeMenu
             new TextPrompt<int>("ID del tipo a actualizar (0 = Volver):")
                 .Validate(v => v >= 0 ? ValidationResult.Success() : ValidationResult.Error("[red]El ID no puede ser negativo[/]")));
         if (id == 0) return;
-        var name = AnsiConsole.Ask<string>("Nuevo nombre:");
         try
         {
+            using var pre = DbContextFactory.Create();
+            var existing = await new GetBaggageTypeByIdUseCase(new BaggageTypeRepository(pre)).ExecuteAsync(id, ct);
+
+            var name = AnsiConsole.Prompt(new TextPrompt<string>("Nombre:").DefaultValue(existing.Name.Value));
+            var weight = AnsiConsole.Prompt(new TextPrompt<decimal>("Peso (kg):").DefaultValue(existing.WeightKg));
+            var price = AnsiConsole.Prompt(new TextPrompt<decimal>("Precio base (COP):").DefaultValue(existing.BasePriceCop));
+            var desc = AnsiConsole.Prompt(new TextPrompt<string>("Descripción (Enter para dejar vacío):").DefaultValue(existing.Description ?? string.Empty));
+            var active = AnsiConsole.Confirm("¿Activo?", existing.IsActive);
+
             using var context = DbContextFactory.Create();
-            await new UpdateBaggageTypeUseCase(new BaggageTypeRepository(context)).ExecuteAsync(id, name, ct);
+            await new UpdateBaggageTypeUseCase(new BaggageTypeRepository(context))
+                .ExecuteAsync(id, name, weight, price, string.IsNullOrWhiteSpace(desc) ? null : desc, active, ct);
             await context.SaveChangesAsync(ct);
             AnsiConsole.MarkupLine("\n[green]Tipo de equipaje actualizado correctamente.[/]");
         }
         catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
+        ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
+    }
+
+    private static async Task ToggleActiveAsync(CancellationToken ct)
+    {
+        Console.Clear();
+        AnsiConsole.Write(new Rule("[yellow]ACTIVAR / DESACTIVAR TIPO[/]").Centered());
+        var id = AnsiConsole.Prompt(
+            new TextPrompt<int>("ID del tipo (0 = Volver):")
+                .Validate(v => v >= 0 ? ValidationResult.Success() : ValidationResult.Error("[red]El ID no puede ser negativo[/]")));
+        if (id == 0) return;
+
+        try
+        {
+            using var pre = DbContextFactory.Create();
+            var existing = await new GetBaggageTypeByIdUseCase(new BaggageTypeRepository(pre)).ExecuteAsync(id, ct);
+            var next = !existing.IsActive;
+
+            using var context = DbContextFactory.Create();
+            await new UpdateBaggageTypeUseCase(new BaggageTypeRepository(context))
+                .ExecuteAsync(
+                    existing.Id.Value,
+                    existing.Name.Value,
+                    existing.WeightKg,
+                    existing.BasePriceCop,
+                    existing.Description,
+                    next,
+                    ct);
+            await context.SaveChangesAsync(ct);
+            AnsiConsole.MarkupLine(next ? "\n[green]Tipo activado.[/]" : "\n[green]Tipo desactivado.[/]");
+        }
+        catch (Exception ex) { EntityPersistenceUiFeedback.Write(ex); }
+
         ConsolaPausa.PresionarCualquierTecla(conLineaInicial: false);
     }
 
@@ -225,11 +285,18 @@ public sealed class BaggageTypeMenu
 
     private static void ViewClientFareBundleDisplay(ClientFareBundleDisplayData d)
     {
+        using var ctx = DbContextFactory.Create();
+        var btypes = new GetAllBaggageTypesUseCase(new BaggageTypeRepository(ctx)).ExecuteAsync().GetAwaiter().GetResult();
+        var carry = btypes.FirstOrDefault(x => string.Equals(x.Name.Value, BaggageCarryOnName, StringComparison.OrdinalIgnoreCase));
+        var checkedB = btypes.FirstOrDefault(x => string.Equals(x.Name.Value, BaggageCheckedName, StringComparison.OrdinalIgnoreCase));
+        var refCarry = carry?.BasePriceCop ?? d.RefCarryOnCop;
+        var refChecked = checkedB?.BasePriceCop ?? d.RefCheckedCop;
+
         var t = new Table().Border(TableBorder.Rounded);
         t.AddColumn("Campo");
         t.AddColumn("Valor");
-        t.AddRow("Ref. mano (COP)", Markup.Escape(ClientFareBundleDisplayDefaults.FormatPriceCopColombia(d.RefCarryOnCop)));
-        t.AddRow("Ref. bodega (COP)", Markup.Escape(ClientFareBundleDisplayDefaults.FormatPriceCopColombia(d.RefCheckedCop)));
+        t.AddRow("Ref. mano (COP)", Markup.Escape(ClientFareBundleDisplayDefaults.FormatPriceCopColombia(refCarry)));
+        t.AddRow("Ref. bodega (COP)", Markup.Escape(ClientFareBundleDisplayDefaults.FormatPriceCopColombia(refChecked)));
         t.AddRow("Multiplicador Classic", d.ClassicMultiplier.ToString(System.Globalization.CultureInfo.InvariantCulture));
         t.AddRow("Multiplicador Flex", d.FlexMultiplier.ToString(System.Globalization.CultureInfo.InvariantCulture));
         t.AddRow("Ref. pasaje sin publicar (COP)", Markup.Escape(ClientFareBundleDisplayDefaults.FormatPriceCopColombia(d.UnpublishedFareReferenceCop)));
@@ -237,16 +304,16 @@ public sealed class BaggageTypeMenu
         AnsiConsole.Write(t);
         AnsiConsole.MarkupLine($"\n[bold]Subtítulo[/] [grey]{Markup.Escape(d.SubtitleLine)}[/]");
         var expl = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
-            d.ExplainerLine, d.RefCarryOnCop, d.RefCheckedCop, d.SeatSelectionFromCop);
+            d.ExplainerLine, refCarry, refChecked, d.SeatSelectionFromCop);
         AnsiConsole.MarkupLine($"\n[bold]Explicación (vista con precios resueltos)[/]\n[grey]{Markup.Escape(StripMarkupForAdminPreview(expl))}[/]");
         var basicPrev = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
-            d.BasicBodyMarkup, d.RefCarryOnCop, d.RefCheckedCop, d.SeatSelectionFromCop);
+            d.BasicBodyMarkup, refCarry, refChecked, d.SeatSelectionFromCop);
         AnsiConsole.MarkupLine($"\n[bold]Basic (preview sin colores, solo texto / marcadores resueltos)[/]\n[dim]{Markup.Escape(TruncateForPreview(basicPrev, 400))}[/]");
         var classicPrev = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
-            d.ClassicBodyMarkup, d.RefCarryOnCop, d.RefCheckedCop, d.SeatSelectionFromCop);
+            d.ClassicBodyMarkup, refCarry, refChecked, d.SeatSelectionFromCop);
         AnsiConsole.MarkupLine($"\n[bold]Classic[/]\n[dim]{Markup.Escape(TruncateForPreview(classicPrev, 400))}[/]");
         var flexPrev = ClientFareBundleDisplayDefaults.ApplyPricePlaceholders(
-            d.FlexBodyMarkup, d.RefCarryOnCop, d.RefCheckedCop, d.SeatSelectionFromCop);
+            d.FlexBodyMarkup, refCarry, refChecked, d.SeatSelectionFromCop);
         AnsiConsole.MarkupLine($"\n[bold]Flex[/]\n[dim]{Markup.Escape(TruncateForPreview(flexPrev, 400))}[/]");
     }
 
@@ -266,14 +333,8 @@ public sealed class BaggageTypeMenu
 
     private static void EditClientFareBundleDisplayNumbers(ClientFareBundleDisplayData d)
     {
-        d.RefCarryOnCop = AnsiConsole.Prompt(
-            new TextPrompt<decimal>("Ref. equipaje de mano (COP):")
-                .DefaultValue(d.RefCarryOnCop)
-                .ShowDefaultValue());
-        d.RefCheckedCop = AnsiConsole.Prompt(
-            new TextPrompt<decimal>("Ref. equipaje de bodega (COP):")
-                .DefaultValue(d.RefCheckedCop)
-                .ShowDefaultValue());
+        AnsiConsole.MarkupLine(
+            "[grey]Los valores de referencia de equipaje de mano y bodega se gestionan en «Tipos de equipaje» (precio base).[/]\n");
         d.ClassicMultiplier = AnsiConsole.Prompt(
             new TextPrompt<decimal>("Multiplicador respecto a Basic para Classic (ej. 1,465):")
                 .DefaultValue(d.ClassicMultiplier)

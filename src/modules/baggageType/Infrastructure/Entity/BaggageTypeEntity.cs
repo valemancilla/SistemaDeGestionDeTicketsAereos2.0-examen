@@ -13,6 +13,18 @@ public class BaggageTypeEntity
     // Nombre del tipo (ej: Equipaje de mano, Equipaje de bodega)
     public string TypeName { get; set; } = string.Empty;
 
+    // Peso de referencia del tipo (kg). Para bolso/artículo personal puede ser 0.
+    public decimal WeightKg { get; set; }
+
+    // Precio base del tipo (COP). Para incluido puede ser 0.
+    public decimal BasePriceCop { get; set; }
+
+    // Descripción opcional (para mostrar en administración).
+    public string? Description { get; set; }
+
+    // Activo/Inactivo: el admin controla qué tipos se ofrecen.
+    public bool IsActive { get; set; } = true;
+
     // Lista de equipajes que son de este tipo
     public ICollection<BaggageEntity> Baggages { get; set; } = new List<BaggageEntity>();
 }

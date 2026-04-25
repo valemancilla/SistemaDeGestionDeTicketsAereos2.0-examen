@@ -194,7 +194,8 @@ public static class RegisterPassengerBoardingMenu
             if (bp is null)
                 AnsiConsole.MarkupLine("[grey]No hay pase de abordar en base; solo se actualizó el tiquete.[/]");
             else if (passWasAlreadyActivo)
-                AnsiConsole.MarkupLine("[grey]Pase de abordar ya estaba [bold]Activo[/].[/]");
+                AnsiConsole.MarkupLine(
+                    "[green]Pase de abordar: ya estaba en estado [bold]Activo[/] en base; se confirmó el abordaje del tiquete.[/]");
             else
                 AnsiConsole.MarkupLine("[green]Pase de abordar: [bold]Activo[/] (cierre Generado/Activo del examen).[/]");
 
