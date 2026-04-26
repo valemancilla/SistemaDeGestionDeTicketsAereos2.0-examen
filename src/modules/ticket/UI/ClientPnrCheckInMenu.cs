@@ -1,6 +1,6 @@
 // =============================================================================
 // EXAMEN 3 — UI de "Realizar check-in" (cliente).
-// - Entrada: código de tiquete o PNR + apellido del pasajero.
+// - Entrada: código de tiquete, PNR o ID numérico de reserva (+ apellido si aplica).
 // - Delegación: ExamCheckInService (PrepareAsync → posible elección de pasajero →
 //   panel de datos → asiento si falta → CompleteAsync).
 // - Salida: pase impreso en consola con estados Generado (BD) y texto de uso Activo.
@@ -94,20 +94,25 @@ public static class ClientPnrCheckInMenu
         var modo = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Ingrese:")
-                .PageSize(4)
-                .AddChoices("1. Código de tiquete", "2. Código de reserva (PNR)"));
+                .PageSize(5)
+                .AddChoices(
+                    "1. Código de tiquete",
+                    "2. Código de reserva (PNR)",
+                    "3. ID de reserva (número)"));
 
         var ticketRepoInput = AnsiConsole.Prompt(
             new TextPrompt<string>(modo.StartsWith("1", StringComparison.Ordinal)
                 ? "Código del tiquete:"
-                : "Código de reserva (PNR):")
+                : modo.StartsWith("2", StringComparison.Ordinal)
+                    ? "Código de reserva (PNR):"
+                    : "ID de reserva (número):")
                 .Validate(v => string.IsNullOrWhiteSpace(v)
-                    ? ValidationResult.Error("[red]El código no puede estar vacío.[/]")
+                    ? ValidationResult.Error("[red]El dato no puede estar vacío.[/]")
                     : ValidationResult.Success()));
 
-        // Para PNR, se mantiene apellido como apoyo de selección de pasajero (sin romper el flujo existente).
+        // PNR o ID de reserva: apellido para filtrar / elegir pasajero cuando la reserva trae a varios.
         string? surname = null;
-        if (modo.StartsWith("2", StringComparison.Ordinal))
+        if (modo.StartsWith("2", StringComparison.Ordinal) || modo.StartsWith("3", StringComparison.Ordinal))
         {
             surname = AnsiConsole.Prompt(
                 new TextPrompt<string>("Apellido del pasajero:")
@@ -121,7 +126,9 @@ public static class ClientPnrCheckInMenu
             var service = new ExamCheckInService();
             var mode = modo.StartsWith("1", StringComparison.Ordinal)
                 ? ExamCheckInService.InputMode.TicketCode
-                : ExamCheckInService.InputMode.BookingPnr;
+                : modo.StartsWith("2", StringComparison.Ordinal)
+                    ? ExamCheckInService.InputMode.BookingPnr
+                    : ExamCheckInService.InputMode.BookingId;
 
             int? selectedBookingCustomerId = null;
             ExamCheckInService.PrepareResult prepared;
@@ -249,8 +256,10 @@ public static class ClientPnrCheckInMenu
             AnsiConsole.WriteLine($"Asiento: {seatLabel}");
             AnsiConsole.WriteLine($"Puerta: {pass.Gate.Value}");
             AnsiConsole.WriteLine($"Hora de abordaje: {pass.BoardingTime:yyyy-MM-dd HH:mm}");
-            AnsiConsole.WriteLine("Estado del pase (catálogo): Generado");
-            AnsiConsole.WriteLine("Estado operativo: Activo (válido para presentarse en puerta)");
+            AnsiConsole.WriteLine("Estado del pase en base de datos: Generado");
+            AnsiConsole.WriteLine(
+                "El pase pasa a «Activo» al registrar abordaje (menú admin: Registrar abordaje). " +
+                "Hasta entonces, presentate en puerta con este pase y el tiquete en Check-in realizado.");
             AnsiConsole.WriteLine();
             AnsiConsole.WriteLine($"Código pase: {pass.Code.Value}");
             AnsiConsole.WriteLine("=====================================");

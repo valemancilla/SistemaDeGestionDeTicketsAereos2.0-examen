@@ -41,8 +41,8 @@ public static class RegisterPassengerBoardingMenu
         Console.Clear();
         AnsiConsole.Write(new Rule("[green]REGISTRAR ABORDAJE (PUERTA / AERONAVE)[/]").Centered());
         AnsiConsole.MarkupLine(
-            "[grey]Pasa el tiquete a [bold]Abordado[/] y el pase a [bold]Activo[/] (si estaba [bold]Generado[/]) " +
-            "cuando el pasajero embarque. Buscá por código de tiquete o de pase.[/]\n");
+            "[grey]Pasa el tiquete a [bold]Abordado[/] y el pase de [bold]Generado[/] a [bold]Activo[/] " +
+            "cuando el pasajero embarque (Examen 3). Buscá por código de tiquete o de pase.[/]\n");
 
         var modo = AnsiConsole.Prompt(
             new SelectionPrompt<string>()

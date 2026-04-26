@@ -47,6 +47,8 @@ using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Re
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Domain.aggregate;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.ticketStatusHistory.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.ticketStatusHistory.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
@@ -83,7 +85,9 @@ public sealed class ExamCheckInService
     public enum InputMode
     {
         TicketCode = 1,
-        BookingPnr = 2
+        BookingPnr = 2,
+        /// <summary>ID numérico de <c>Booking</c> (identificador de reserva en base).</summary>
+        BookingId = 3
     }
 
     public sealed record PrepareRequest(
@@ -149,10 +153,9 @@ public sealed class ExamCheckInService
         Ticket? ticket;
         Booking? booking;
 
-        var rawKey = (req.TicketOrPnrCode ?? string.Empty).Trim().ToUpperInvariant();
-
         if (req.Mode == InputMode.TicketCode)
         {
+            var rawKey = (req.TicketOrPnrCode ?? string.Empty).Trim().ToUpperInvariant();
             ticket = await new TicketRepository(context).GetByCodeAsync(rawKey, ct);
             if (ticket is null)
                 return new PrepareResult(false, "Tiquete no encontrado.", null, false, Array.Empty<(int, string)>());
@@ -164,8 +167,31 @@ public sealed class ExamCheckInService
             if (booking is null)
                 return new PrepareResult(false, "No se halló la reserva del tiquete.", null, false, Array.Empty<(int, string)>());
         }
+        else if (req.Mode == InputMode.BookingId)
+        {
+            if (!int.TryParse(
+                    (req.TicketOrPnrCode ?? string.Empty).Trim(),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var idBooking) ||
+                idBooking <= 0)
+                return new PrepareResult(false, "ID de reserva no válido.", null, false, Array.Empty<(int, string)>());
+
+            booking = await new BookingRepository(context).GetByIdAsync(BookingId.Create(idBooking), ct);
+            if (booking is null)
+                return new PrepareResult(false, "No existe una reserva con ese identificador.", null, false, Array.Empty<(int, string)>());
+
+            if (!await UserMayAccessBookingAsync(context, booking.Id.Value, req.SessionUserRole, req.SessionUserId, req.SessionPersonId, ct))
+                return new PrepareResult(false, "Esta reserva no está asociada a tu cuenta.", null, false, Array.Empty<(int, string)>());
+
+            var ticketsByBooking = await new GetAllTicketsUseCase(new TicketRepository(context)).ExecuteAsync(ct);
+            ticket = ticketsByBooking.Where(t => t.IdBooking == booking.Id.Value).OrderBy(t => t.Id.Value).FirstOrDefault();
+            if (ticket is null)
+                return new PrepareResult(false, "Tiquete no encontrado.", null, false, Array.Empty<(int, string)>());
+        }
         else
         {
+            var rawKey = (req.TicketOrPnrCode ?? string.Empty).Trim().ToUpperInvariant();
             booking = await new BookingRepository(context).GetByCodeAsync(rawKey, ct);
             if (booking is null)
                 return new PrepareResult(false, "No existe una reserva con ese código.", null, false, Array.Empty<(int, string)>());
@@ -243,8 +269,8 @@ public sealed class ExamCheckInService
 
         var (bookingCustomerLink, passenger) = candidates[0];
 
-        var routeLabel = await BuildRouteLabelForFlightAsync(context, flight.IdRoute, ct) ?? "—";
-        var routeSplit = (routeLabel ?? "—").Split('→', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        string routeLabel = (await BuildRouteLabelForFlightAsync(context, flight.IdRoute, ct)) ?? "—";
+        var routeSplit = routeLabel.Split('→', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var origenTxt = routeSplit.Length > 0 ? routeSplit[0].Trim() : "—";
         var destinoTxt = routeSplit.Length > 1 ? routeSplit[1].Trim() : "—";
 
@@ -385,6 +411,16 @@ public sealed class ExamCheckInService
                 passengerName,
                 ct);
         }
+
+        // Examen 3: trazabilidad del cambio de estado del tiquete y del trámite del pasajero (registro CheckIn ya creado arriba).
+        await new CreateTicketStatusHistoryUseCase(new TicketStatusHistoryRepository(context))
+            .ExecuteAsync(
+                DateTime.Now,
+                "Check-in: pasajero en condición de embarque (registro de check-in completado). Tiquete: Check-in realizado. Pase: Generado en sistema.",
+                req.Info.TicketId,
+                checkInDoneId,
+                req.SessionUserId,
+                ct);
 
         await context.SaveChangesAsync(ct);
 
