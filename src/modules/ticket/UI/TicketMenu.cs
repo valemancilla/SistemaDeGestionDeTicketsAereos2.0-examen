@@ -2,7 +2,7 @@
 // Módulo UI de tiquetes y check-in (admin y cliente).
 // Examen 3: consulta de pase (ConsultBoardingPassAsync + desambiguación PassChoices),
 // listado de pasajeros listos para abordar, registro de abordaje vía RegisterPassengerBoardingMenu,
-// y herramientas admin de check-in manual. Cliente: ClientPnrCheckInMenu para check-in PNR/tiquete.
+// y herramientas admin de check-in manual. Cliente: check-in PNR/tiquete y opc. 3 pasajeros listos (vuelos de la sesión).
 // =============================================================================
 using SistemaDeGestionDeTicketsAereos.src.modules.baggage.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.baggage.Domain.valueObject;
@@ -140,10 +140,11 @@ public sealed class TicketMenu
                     "[grey]Menú alineado al enunciado del docente. Opcional: ver mis tiquetes / check-ins.[/]\n");
                 var option = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
-                        .PageSize(8)
+                        .PageSize(10)
                         .AddChoices(
                             "1. Realizar check-in",
                             "2. Consultar pase de abordar",
+                            "3. Consultar pasajeros listos para abordar",
                             "4. Ver mis tiquetes",
                             "5. Ver mis check-ins",
                             "0. Volver"));
@@ -154,6 +155,9 @@ public sealed class TicketMenu
                         break;
                     case "2. Consultar pase de abordar":
                         await ConsultBoardingPassAsync(ct);
+                        break;
+                    case "3. Consultar pasajeros listos para abordar":
+                        await AdminListarPasajerosListosAbordarAsync(ct, listAllFlights: false);
                         break;
                     case "4. Ver mis tiquetes":
                         await ListTicketsAsync(ct);
