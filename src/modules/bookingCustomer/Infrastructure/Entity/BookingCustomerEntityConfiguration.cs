@@ -49,6 +49,13 @@ public sealed class BookingCustomerEntityConfiguration : IEntityTypeConfiguratio
             .HasDefaultValue(true)
             .IsRequired();
 
+        // Examen 3: el pasajero queda "listo para abordar" tras check-in exitoso
+        builder.Property(x => x.IsReadyToBoard)
+            .HasColumnName("IsReadyToBoard")
+            .HasColumnType("tinyint(1)")
+            .HasDefaultValue(false)
+            .IsRequired();
+
         // La fecha de asociación se toma automáticamente al momento de registrar
         builder.Property(x => x.AssociationDate)
             .HasColumnName("AssociationDate")

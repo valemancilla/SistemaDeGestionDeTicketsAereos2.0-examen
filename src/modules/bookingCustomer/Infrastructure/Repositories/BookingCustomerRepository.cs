@@ -78,7 +78,15 @@ public sealed class BookingCustomerRepository : IBookingCustomerRepository
 
     private static BookingCustomer ToDomain(BookingCustomerEntity entity)
     {
-        return BookingCustomer.Create(entity.IdBookingCustomer, entity.AssociationDate, entity.IdBooking, entity.IdUser, entity.IdPerson, entity.IdSeat, entity.IsPrimary);
+        return BookingCustomer.Create(
+            entity.IdBookingCustomer,
+            entity.AssociationDate,
+            entity.IdBooking,
+            entity.IdUser,
+            entity.IdPerson,
+            entity.IdSeat,
+            entity.IsPrimary,
+            entity.IsReadyToBoard);
     }
 
     private static BookingCustomerEntity ToEntity(BookingCustomer aggregate)
@@ -91,6 +99,7 @@ public sealed class BookingCustomerRepository : IBookingCustomerRepository
             IdPerson = aggregate.IdPerson,
             IdSeat = aggregate.IdSeat,
             IsPrimary = aggregate.IsPrimary,
+            IsReadyToBoard = aggregate.IsReadyToBoard,
             AssociationDate = aggregate.AssociationDate.Value
         };
     }

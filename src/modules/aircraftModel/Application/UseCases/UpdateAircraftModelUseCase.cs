@@ -16,6 +16,11 @@ public sealed class UpdateAircraftModelUseCase
     {
         var existing = await _repo.GetByIdAsync(AircraftModelId.Create(id), ct);
         if (existing is null) throw new KeyNotFoundException($"AircraftModel with id '{id}' was not found.");
+
+        var existingByName = await _repo.GetByNameAsync(name, ct);
+        if (existingByName is not null && existingByName.Id.Value != id)
+            throw new InvalidOperationException($"AircraftModel with name '{name}' already exists.");
+
         var updated = AircraftModel.Create(id, name, idManufacturer);
         await _repo.UpdateAsync(updated, ct);
         return updated;

@@ -10,6 +10,9 @@ public interface IAircraftModelRepository
     // Busca un modelo por su ID
     Task<AircraftModel?> GetByIdAsync(AircraftModelId id, CancellationToken ct = default);
 
+    // Busca un modelo por su nombre (útil para verificar unicidad)
+    Task<AircraftModel?> GetByNameAsync(string name, CancellationToken ct = default);
+
     // Retorna todos los modelos de aeronave registrados
     Task<IReadOnlyList<AircraftModel>> ListAsync(CancellationToken ct = default);
 

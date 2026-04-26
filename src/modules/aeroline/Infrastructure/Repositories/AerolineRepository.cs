@@ -52,6 +52,17 @@ public sealed class AerolineRepository : IAirlineRepository
         return entity is null ? null : ToDomain(entity);
     }
 
+    public async Task<Aeroline?> GetByNameAsync(string name, CancellationToken ct = default)
+    {
+        var normalizedName = name.Trim();
+
+        var entity = await _dbContext.Set<AerolineEntity>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Name == normalizedName, ct);
+
+        return entity is null ? null : ToDomain(entity);
+    }
+
     public async Task<IReadOnlyList<Aeroline>> ListAsync(CancellationToken ct = default)
     {
         var entities = await _dbContext.Set<AerolineEntity>()

@@ -28,6 +28,17 @@ public sealed class AircraftModelRepository : IAircraftModelRepository
         return entity is null ? null : ToDomain(entity);
     }
 
+    public async Task<AircraftModel?> GetByNameAsync(string name, CancellationToken ct = default)
+    {
+        var normalizedName = name.Trim();
+
+        var entity = await _dbContext.Set<AircraftModelEntity>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Model == normalizedName, ct);
+
+        return entity is null ? null : ToDomain(entity);
+    }
+
     public async Task<IReadOnlyList<AircraftModel>> ListAsync(CancellationToken ct = default)
     {
         var query = _dbContext.Set<AircraftModelEntity>().AsNoTracking();

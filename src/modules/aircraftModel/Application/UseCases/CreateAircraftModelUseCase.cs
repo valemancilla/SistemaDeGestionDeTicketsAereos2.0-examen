@@ -13,6 +13,9 @@ public sealed class CreateAircraftModelUseCase
     // Las validaciones (nombre no vacío, fabricante > 0) las maneja el agregado AircraftModel.CreateNew
     public async Task<AircraftModel> ExecuteAsync(string name, int idManufacturer, CancellationToken ct = default)
     {
+        var existingByName = await _repo.GetByNameAsync(name, ct);
+        if (existingByName is not null) throw new InvalidOperationException($"AircraftModel with name '{name}' already exists.");
+
         var entity = AircraftModel.CreateNew(name, idManufacturer);
         await _repo.AddAsync(entity, ct);
         return entity;

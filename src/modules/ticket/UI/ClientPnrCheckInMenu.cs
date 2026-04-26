@@ -1,6 +1,7 @@
 // =============================================================================
 // EXAMEN 3 — UI de "Realizar check-in" (cliente).
-// - Entrada: código de tiquete o PNR + apellido del pasajero.
+// - Consistencia enunciado: vuelo vs asiento, pagos, ciclo pase, sin cambiar reglas (ExamCheckInService).
+// - Entrada: código de tiquete, PNR o ID numérico de reserva (+ apellido si aplica).
 // - Delegación: ExamCheckInService (PrepareAsync → posible elección de pasajero →
 //   panel de datos → asiento si falta → CompleteAsync).
 // - Salida: pase impreso en consola con estados Generado (BD) y texto de uso Activo.
@@ -61,21 +62,8 @@ namespace SistemaDeGestionDeTicketsAereos.src.modules.ticket.UI;
 
 public static class ClientPnrCheckInMenu
 {
-    private const string BookingEntityType = "Booking";
-    private const string CheckInEntityType = "CheckIn";
-    private const string TicketEntityType = "Ticket";
-    private const string FlightEntityType = "Flight";
-    private const string PaymentEntityType = "Payment";
-
-    private const string BookingStatusPaid = "Pagada";
-    private const string CheckInStatusCompleted = "Completado";
-    private const string PaymentStatusApproved = "Aprobado";
-    private const string TicketStatusIssued = "Emitido";
-    private const string TicketStatusActive = "Activo";
-    private const string TicketStatusCheckInDone = "Check-in realizado";
-
-    private static readonly TimeSpan CheckInOpensBeforeDeparture = TimeSpan.FromHours(24);
-    private static readonly TimeSpan CheckInClosesBeforeDeparture = TimeSpan.FromMinutes(45);
+    // Nota: la ventana horaria y validaciones del examen viven en ExamCheckInService (negocio),
+    // la UI solo recolecta inputs y presenta outputs.
 
     public static async Task RunAsync(CancellationToken ct = default)
     {
@@ -94,20 +82,25 @@ public static class ClientPnrCheckInMenu
         var modo = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Ingrese:")
-                .PageSize(4)
-                .AddChoices("1. Código de tiquete", "2. Código de reserva (PNR)"));
+                .PageSize(5)
+                .AddChoices(
+                    "1. Código de tiquete",
+                    "2. Código de reserva (PNR)",
+                    "3. ID de reserva (número)"));
 
         var ticketRepoInput = AnsiConsole.Prompt(
             new TextPrompt<string>(modo.StartsWith("1", StringComparison.Ordinal)
                 ? "Código del tiquete:"
-                : "Código de reserva (PNR):")
+                : modo.StartsWith("2", StringComparison.Ordinal)
+                    ? "Código de reserva (PNR):"
+                    : "ID de reserva (número):")
                 .Validate(v => string.IsNullOrWhiteSpace(v)
-                    ? ValidationResult.Error("[red]El código no puede estar vacío.[/]")
+                    ? ValidationResult.Error("[red]El dato no puede estar vacío.[/]")
                     : ValidationResult.Success()));
 
-        // Para PNR, se mantiene apellido como apoyo de selección de pasajero (sin romper el flujo existente).
+        // PNR o ID de reserva: apellido para filtrar / elegir pasajero cuando la reserva trae a varios.
         string? surname = null;
-        if (modo.StartsWith("2", StringComparison.Ordinal))
+        if (modo.StartsWith("2", StringComparison.Ordinal) || modo.StartsWith("3", StringComparison.Ordinal))
         {
             surname = AnsiConsole.Prompt(
                 new TextPrompt<string>("Apellido del pasajero:")
@@ -121,7 +114,9 @@ public static class ClientPnrCheckInMenu
             var service = new ExamCheckInService();
             var mode = modo.StartsWith("1", StringComparison.Ordinal)
                 ? ExamCheckInService.InputMode.TicketCode
-                : ExamCheckInService.InputMode.BookingPnr;
+                : modo.StartsWith("2", StringComparison.Ordinal)
+                    ? ExamCheckInService.InputMode.BookingPnr
+                    : ExamCheckInService.InputMode.BookingId;
 
             int? selectedBookingCustomerId = null;
             ExamCheckInService.PrepareResult prepared;
@@ -185,16 +180,25 @@ public static class ClientPnrCheckInMenu
 
             var info = prepared.Info;
 
+            var gateVuelo = string.IsNullOrWhiteSpace(info.BoardingGate) ? "—" : info.BoardingGate;
+            var asientoLinea = prepared.SeatRequired
+                ? "Sin asiento aún: elegí uno en el paso siguiente (plazas del vuelo vía reserva)."
+                : $"Asiento asignado al pasajero en la reserva (id {info.CurrentSeatId}).";
             AnsiConsole.Write(new Panel(
                     $"[bold]Nombre del pasajero:[/] {Markup.Escape(info.PassengerFullName)}\n" +
                     $"[bold]Documento del pasajero:[/] {Markup.Escape(info.PassengerDocument)}\n" +
-                    $"[bold]Código del vuelo:[/] {Markup.Escape(info.FlightCode)}\n" +
-                    $"[bold]Origen:[/] {Markup.Escape(info.OriginLabel)}\n" +
-                    $"[bold]Destino:[/] {Markup.Escape(info.DestinationLabel)}\n" +
-                    $"[bold]Fecha y hora de salida:[/] {info.FlightDate:yyyy-MM-dd} {info.FlightDepartureTime:hh\\:mm}\n" +
+                    $"[bold]Código del vuelo:[/] {Markup.Escape(info.FlightCode)} [dim](itinerario / vuelo)[/]\n" +
+                    $"[bold]Origen:[/] {Markup.Escape(info.OriginLabel)} [dim]·[/] [bold]Destino:[/] {Markup.Escape(info.DestinationLabel)} [dim](ruta del vuelo)[/]\n" +
+                    $"[bold]Fecha y hora de salida:[/] {info.FlightDate:yyyy-MM-dd} {info.FlightDepartureTime:hh\\:mm} [dim](programación del vuelo)[/]\n" +
+                    $"[bold]Puerta de embarque:[/] {Markup.Escape(gateVuelo)} [dim](dato del vuelo)[/]\n" +
+                    $"[bold]Asiento (reserva + plazas del vuelo):[/] {Markup.Escape(asientoLinea)}\n" +
                     $"[bold]Estado actual del tiquete:[/] {Markup.Escape(info.TicketStatusName)}")
                 .Header("[cyan]Información del tiquete[/]")
                 .Border(BoxBorder.Rounded));
+            AnsiConsole.MarkupLine(
+                "[dim]Nota (Examen 3): ruta, salida y puerta provienen del vuelo; el asiento figura en la reserva del pasajero y en el mapa de asientos del vuelo, no como columna del vuelo.[/]");
+            AnsiConsole.MarkupLine(
+                "[green]Pago validado correctamente[/] [dim](Pagado = Reserva «Pagada» + Pago «Aprobado»).[/]");
 
             int seatId = info.CurrentSeatId;
             string seatLabel = seatId.ToString(CultureInfo.InvariantCulture);
@@ -249,8 +253,10 @@ public static class ClientPnrCheckInMenu
             AnsiConsole.WriteLine($"Asiento: {seatLabel}");
             AnsiConsole.WriteLine($"Puerta: {pass.Gate.Value}");
             AnsiConsole.WriteLine($"Hora de abordaje: {pass.BoardingTime:yyyy-MM-dd HH:mm}");
-            AnsiConsole.WriteLine("Estado del pase (catálogo): Generado");
-            AnsiConsole.WriteLine("Estado operativo: Activo (válido para presentarse en puerta)");
+            AnsiConsole.WriteLine("Estado del pase en base de datos: Generado");
+            AnsiConsole.WriteLine(
+                "El pase pasa a «Activo» al registrar abordaje (menú admin: Registrar abordaje). " +
+                "Hasta entonces, presentate en puerta con este pase y el tiquete en Check-in realizado.");
             AnsiConsole.WriteLine();
             AnsiConsole.WriteLine($"Código pase: {pass.Code.Value}");
             AnsiConsole.WriteLine("=====================================");

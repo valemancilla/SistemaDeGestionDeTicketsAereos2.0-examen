@@ -47,6 +47,8 @@ using SistemaDeGestionDeTicketsAereos.src.modules.systemStatus.Infrastructure.Re
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Application.UseCases;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Domain.aggregate;
 using SistemaDeGestionDeTicketsAereos.src.modules.ticket.Infrastructure.Repositories;
+using SistemaDeGestionDeTicketsAereos.src.modules.ticketStatusHistory.Application.UseCases;
+using SistemaDeGestionDeTicketsAereos.src.modules.ticketStatusHistory.Infrastructure.Repositories;
 using SistemaDeGestionDeTicketsAereos.src.shared.context;
 using SistemaDeGestionDeTicketsAereos.src.shared.helpers;
 using SistemaDeGestionDeTicketsAereos.src.shared.ui.menus;
@@ -73,17 +75,18 @@ public sealed class ExamCheckInService
     private const string TicketStatusCheckInDone = "Check-in realizado";
     private const string BoardingPassStatusGenerated = "Generado";
 
-    // Ventana de tiempo para check-in (laboratorio / examen):
-    // El enunciado pide validar "fuera del tiempo permitido", pero no fija cuántas horas antes.
-    // 24h antes bloqueaba vuelos de prueba con salida lejana (p. ej. dentro de meses).
-    // Se deja apertura muy amplia y solo se mantiene el cierre típico antes de salir.
-    private static readonly TimeSpan CheckInOpensBeforeDeparture = TimeSpan.FromDays(365 * 5);
+    // Ventana de tiempo para check-in (examen):
+    // - Abre 24h antes de la salida.
+    // - Cierra 45 minutos antes de la salida.
+    private static readonly TimeSpan CheckInOpensBeforeDeparture = TimeSpan.FromHours(24);
     private static readonly TimeSpan CheckInClosesBeforeDeparture = TimeSpan.FromMinutes(45);
 
     public enum InputMode
     {
         TicketCode = 1,
-        BookingPnr = 2
+        BookingPnr = 2,
+        /// <summary>ID numérico de <c>Booking</c> (identificador de reserva en base).</summary>
+        BookingId = 3
     }
 
     public sealed record PrepareRequest(
@@ -149,10 +152,9 @@ public sealed class ExamCheckInService
         Ticket? ticket;
         Booking? booking;
 
-        var rawKey = (req.TicketOrPnrCode ?? string.Empty).Trim().ToUpperInvariant();
-
         if (req.Mode == InputMode.TicketCode)
         {
+            var rawKey = (req.TicketOrPnrCode ?? string.Empty).Trim().ToUpperInvariant();
             ticket = await new TicketRepository(context).GetByCodeAsync(rawKey, ct);
             if (ticket is null)
                 return new PrepareResult(false, "Tiquete no encontrado.", null, false, Array.Empty<(int, string)>());
@@ -164,8 +166,31 @@ public sealed class ExamCheckInService
             if (booking is null)
                 return new PrepareResult(false, "No se halló la reserva del tiquete.", null, false, Array.Empty<(int, string)>());
         }
+        else if (req.Mode == InputMode.BookingId)
+        {
+            if (!int.TryParse(
+                    (req.TicketOrPnrCode ?? string.Empty).Trim(),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var idBooking) ||
+                idBooking <= 0)
+                return new PrepareResult(false, "ID de reserva no válido.", null, false, Array.Empty<(int, string)>());
+
+            booking = await new BookingRepository(context).GetByIdAsync(BookingId.Create(idBooking), ct);
+            if (booking is null)
+                return new PrepareResult(false, "No existe una reserva con ese identificador.", null, false, Array.Empty<(int, string)>());
+
+            if (!await UserMayAccessBookingAsync(context, booking.Id.Value, req.SessionUserRole, req.SessionUserId, req.SessionPersonId, ct))
+                return new PrepareResult(false, "Esta reserva no está asociada a tu cuenta.", null, false, Array.Empty<(int, string)>());
+
+            var ticketsByBooking = await new GetAllTicketsUseCase(new TicketRepository(context)).ExecuteAsync(ct);
+            ticket = ticketsByBooking.Where(t => t.IdBooking == booking.Id.Value).OrderBy(t => t.Id.Value).FirstOrDefault();
+            if (ticket is null)
+                return new PrepareResult(false, "Tiquete no encontrado.", null, false, Array.Empty<(int, string)>());
+        }
         else
         {
+            var rawKey = (req.TicketOrPnrCode ?? string.Empty).Trim().ToUpperInvariant();
             booking = await new BookingRepository(context).GetByCodeAsync(rawKey, ct);
             if (booking is null)
                 return new PrepareResult(false, "No existe una reserva con ese código.", null, false, Array.Empty<(int, string)>());
@@ -184,9 +209,8 @@ public sealed class ExamCheckInService
             return new PrepareResult(false, "El vuelo no está disponible", null, false, Array.Empty<(int, string)>());
 
         // Resolver pasajero (para PNR se filtra por apellido si lo proveen, preservando el flujo actual sin mezclar lógica en UI).
-        var links = (await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct))
-            .Where(l => l.IdBooking == booking.Id.Value)
-            .ToList();
+        // Mejora técnica simple: filtrar en repositorio para no traer toda la tabla.
+        var links = await new BookingCustomerRepository(context).ListByBookingAsync(booking.Id.Value, ct);
         if (links.Count == 0)
             return new PrepareResult(false, "No hay pasajeros en la reserva.", null, false, Array.Empty<(int, string)>());
 
@@ -243,8 +267,8 @@ public sealed class ExamCheckInService
 
         var (bookingCustomerLink, passenger) = candidates[0];
 
-        var routeLabel = await BuildRouteLabelForFlightAsync(context, flight.IdRoute, ct) ?? "—";
-        var routeSplit = (routeLabel ?? "—").Split('→', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        string routeLabel = (await BuildRouteLabelForFlightAsync(context, flight.IdRoute, ct)) ?? "—";
+        var routeSplit = routeLabel.Split('→', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var origenTxt = routeSplit.Length > 0 ? routeSplit[0].Trim() : "—";
         var destinoTxt = routeSplit.Length > 1 ? routeSplit[1].Trim() : "—";
 
@@ -253,35 +277,39 @@ public sealed class ExamCheckInService
             s.Id.Value == effectiveTicketStatusId &&
             string.Equals(s.EntityType.Value, TicketEntityType, StringComparison.OrdinalIgnoreCase))?.Name.Value ?? "—";
 
-        // Reparación de consistencia: si la reserva ya está pagada (y existe pago aprobado),
-        // el tiquete debe estar "Emitido". Esto corrige datos históricos donde no se emitió automáticamente.
+        // IMPORTANTE (Examen 3):
+        // PrepareAsync debe ser "puro": SOLO valida y resuelve datos para la UI.
+        // No debe cambiar estados, crear registros ni ejecutar SaveChangesAsync.
+        //
+        // Si el sistema requiere "reparaciones de consistencia" (p.ej. emitir un tiquete cuando hay pago aprobado),
+        // eso debe hacerse en un proceso separado (emisión/post-pago) o en un caso de uso explícito,
+        // pero NO en el flujo de check-in antes de confirmar.
+        //
+        // Validación de pago (concepto del enunciado):
+        // En este dominio, "Pagado" = Reserva en estado «Pagada» + existencia de un Payment en estado «Aprobado».
         var payments = await new GetAllPaymentsUseCase(new PaymentRepository(context)).ExecuteAsync(ct);
         var hasApprovedPayment = payments.Any(p => p.IdBooking == booking.Id.Value && p.IdStatus == paymentApprovedId);
-        if (booking.IdStatus == bookingPaidId && hasApprovedPayment && effectiveTicketStatusId != issuedId && effectiveTicketStatusId != checkInDoneId)
-        {
-            await new UpdateTicketUseCase(new TicketRepository(context))
-                .ExecuteAsync(
-                    ticket.Id.Value,
-                    ticket.Code.Value,
-                    ticket.IssueDate.Value,
-                    ticket.IdBooking,
-                    ticket.IdFare,
-                    issuedId,
-                    ct);
-            await context.SaveChangesAsync(ct);
-            effectiveTicketStatusId = issuedId;
-            ticketStatusName = TicketStatusIssued;
-        }
 
         // ── VALIDACIONES OBLIGATORIAS (EN ESTE ORDEN) ──────────────────────
         if (effectiveTicketStatusId != issuedId)
             return new PrepareResult(false, "Tiquete no emitido.", null, false, Array.Empty<(int, string)>());
 
+        // Examen 3: el enunciado pide pago "pagado"; en este dominio = reserva «Pagada» + movimiento de pago aprobado.
         if (booking.IdStatus != bookingPaidId)
-            return new PrepareResult(false, "Pago pendiente.", null, false, Array.Empty<(int, string)>());
+            return new PrepareResult(
+                false,
+                "Pago pendiente: la reserva no está en estado «Pagada».",
+                null,
+                false,
+                Array.Empty<(int, string)>());
 
         if (!hasApprovedPayment)
-            return new PrepareResult(false, "Pago pendiente.", null, false, Array.Empty<(int, string)>());
+            return new PrepareResult(
+                false,
+                "Pago pendiente: no hay un pago «Aprobado» registrado para esta reserva.",
+                null,
+                false,
+                Array.Empty<(int, string)>());
 
         var departureAtLocal = flight.Date.Value.ToDateTime(flight.DepartureTime.Value);
         var nowLocal = DateTime.Now;
@@ -345,19 +373,54 @@ public sealed class ExamCheckInService
         int checkInDoneId = RequireStatusId(statuses, TicketEntityType, TicketStatusCheckInDone);
         int checkInCompletedId = RequireStatusId(statuses, CheckInEntityType, CheckInStatusCompleted);
         int bpGeneratedId = RequireStatusId(statuses, "BoardingPass", BoardingPassStatusGenerated);
+        _ = RequireStatusId(statuses, "BoardingPass", "Activo"); // validación: existe en catálogo (se usa al abordar)
 
-        // Asiento (si cambia, aplicar disponibilidad + vinculo booking-customer)
-        if (req.Info.CurrentSeatId != req.SeatId)
+        // Asiento:
+        // - Si el pasajero NO tiene asiento asignado (CurrentSeatId <= 0), el sistema debe autoasignarlo.
+        // - Si el usuario envía SeatId (flujo actual), se respeta; si no, se elige el primero disponible.
+        int effectiveSeatId = req.SeatId;
+        if (effectiveSeatId <= 0)
+            effectiveSeatId = req.Info.CurrentSeatId;
+        if (effectiveSeatId <= 0)
+        {
+            var seatRepo = new SeatRepository(context);
+            var allSeats = await new GetAllSeatsUseCase(seatRepo).ExecuteAsync(ct);
+            var seatMap = allSeats.ToDictionary(s => s.Id.Value, s => s);
+            var autoChoices = await ListSelectableSeatsAsync(context, req.Info.FlightId, currentSeatId: 0, seatMap, ct);
+            if (autoChoices.Count == 0)
+                return new CompleteResult(false, "No hay asientos disponibles para este vuelo.", null);
+            effectiveSeatId = autoChoices[0].idSeat;
+        }
+
+        // Aplicar asiento si cambia (disponibilidad + vínculo booking-customer)
+        if (req.Info.CurrentSeatId != effectiveSeatId)
         {
             var bcRepo = new BookingCustomerRepository(context);
             var legBc = await bcRepo.GetByIdAsync(BookingCustomerId.Create(req.Info.BookingCustomerId), ct)
                 ?? throw new InvalidOperationException("No se encontró el registro de pasajero en la reserva.");
-            await ApplySeatChangeAsync(context, legBc, req.Info.FlightId, req.Info.CurrentSeatId, req.SeatId, ct);
+            await ApplySeatChangeAsync(context, legBc, req.Info.FlightId, req.Info.CurrentSeatId, effectiveSeatId, ct);
+        }
+
+        // Examen 3: estado explícito del pasajero dentro de su reserva tras check-in exitoso.
+        {
+            var bcRepo = new BookingCustomerRepository(context);
+            var legBc = await bcRepo.GetByIdAsync(BookingCustomerId.Create(req.Info.BookingCustomerId), ct)
+                ?? throw new InvalidOperationException("No se encontró el registro de pasajero en la reserva.");
+            await new UpdateBookingCustomerUseCase(bcRepo).ExecuteAsync(
+                legBc.Id.Value,
+                legBc.AssociationDate.Value,
+                legBc.IdBooking,
+                legBc.IdUser,
+                legBc.IdPerson,
+                effectiveSeatId,
+                legBc.IsPrimary,
+                isReadyToBoard: true,
+                ct: ct);
         }
 
         const int webChannelId = 1;
         await new CreateCheckInUseCase(new CheckInRepository(context))
-            .ExecuteAsync(DateTime.UtcNow, req.Info.TicketId, webChannelId, req.SeatId, req.SessionUserId, checkInCompletedId, ct);
+            .ExecuteAsync(DateTime.UtcNow, req.Info.TicketId, webChannelId, effectiveSeatId, req.SessionUserId, checkInCompletedId, ct);
 
         // Re-leer ticket para mantener issue date original
         var ticket = await new GetTicketByIdUseCase(new TicketRepository(context)).ExecuteAsync(req.Info.TicketId, ct);
@@ -377,7 +440,7 @@ public sealed class ExamCheckInService
             await new CreateBoardingPassUseCase(bpRepo).ExecuteAsync(
                 passCode,
                 req.Info.TicketId,
-                req.SeatId,
+                effectiveSeatId,
                 gate,
                 boardingAt,
                 DateTime.Now,
@@ -385,6 +448,16 @@ public sealed class ExamCheckInService
                 passengerName,
                 ct);
         }
+
+        // Examen 3: trazabilidad de reserva pagada + pago aprobado, tiquete, estado del pasajero (BookingCustomer) y pase.
+        await new CreateTicketStatusHistoryUseCase(new TicketStatusHistoryRepository(context))
+            .ExecuteAsync(
+                DateTime.Now,
+                "Examen 3: reserva «Pagada» y pago «Aprobado» verificados. Pasajero: listo para abordar (BookingCustomer.IsReadyToBoard=true) y CheckIn «Completado». Tiquete: Check-in realizado. Pase: Generado.",
+                req.Info.TicketId,
+                checkInDoneId,
+                req.SessionUserId,
+                ct);
 
         await context.SaveChangesAsync(ct);
 

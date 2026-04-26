@@ -26,6 +26,11 @@ public sealed class AerolineEntityConfiguration : IEntityTypeConfiguration<Aerol
             .HasColumnType("varchar(150)")
             .IsRequired();
 
+        // El nombre de la aerolínea debe ser único (no permitir duplicados por nombre)
+        builder.HasIndex(x => x.Name)
+            .IsUnique()
+            .HasDatabaseName("UQ_Airline_Name");
+
         // Código IATA de exactamente 2 letras (ej: AV, LA, AA)
         builder.Property(x => x.IATACode)
             .HasColumnName("IATACode")

@@ -13,6 +13,9 @@ public sealed class CreateAerolineUseCase
     // El código IATA identifica a la aerolínea mundialmente — debe ser único en el sistema
     public async Task<Aeroline> ExecuteAsync(string name, string iataCode, int idCountry, bool active, CancellationToken ct = default)
     {
+        var existingByName = await _repo.GetByNameAsync(name, ct);
+        if (existingByName is not null) throw new InvalidOperationException($"Aeroline with name '{name}' already exists.");
+
         var existing = await _repo.GetByIataCodeAsync(iataCode, ct);
         if (existing is not null) throw new InvalidOperationException($"Aeroline with IATA code '{iataCode}' already exists.");
         var entity = Aeroline.CreateNew(name, iataCode, idCountry, active);
