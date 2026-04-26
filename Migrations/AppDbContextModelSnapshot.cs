@@ -623,6 +623,12 @@ namespace SistemaDeGestionDeTicketsAereos.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("IsPrimary");
 
+                    b.Property<bool>("IsReadyToBoard")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsReadyToBoard");
+
                     b.HasKey("IdBookingCustomer");
 
                     b.HasIndex("IdBooking");
