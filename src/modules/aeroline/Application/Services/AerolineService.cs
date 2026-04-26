@@ -23,6 +23,10 @@ public sealed class AerolineService : IAerolineService
     // Crea una aerolínea verificando que el código IATA no esté duplicado — es único a nivel mundial
     public async Task<Aeroline> CreateAsync(string name, string iataCode, int idCountry, bool active, CancellationToken cancellationToken = default)
     {
+        var existingByName = await _airlineRepository.GetByNameAsync(name, cancellationToken);
+        if (existingByName is not null)
+            throw new InvalidOperationException($"Aeroline with name '{name}' already exists.");
+
         var existingByIata = await _airlineRepository.GetByIataCodeAsync(iataCode, cancellationToken);
         if (existingByIata is not null)
             throw new InvalidOperationException($"Aeroline with IATA code '{iataCode}' already exists.");
@@ -52,6 +56,14 @@ public sealed class AerolineService : IAerolineService
         var existing = await _airlineRepository.GetByIdAsync(airlineId, cancellationToken);
         if (existing is null)
             throw new KeyNotFoundException($"Aeroline with id '{id}' was not found.");
+
+        var existingByName = await _airlineRepository.GetByNameAsync(name, cancellationToken);
+        if (existingByName is not null && existingByName.Id.Value != id)
+            throw new InvalidOperationException($"Aeroline with name '{name}' already exists.");
+
+        var existingByIata = await _airlineRepository.GetByIataCodeAsync(iataCode, cancellationToken);
+        if (existingByIata is not null && existingByIata.Id.Value != id)
+            throw new InvalidOperationException($"Aeroline with IATA code '{iataCode}' already exists.");
 
         var updated = Aeroline.Create(id, name, iataCode, idCountry, active);
         await _airlineRepository.UpdateAsync(updated, cancellationToken);

@@ -2003,69 +2003,14 @@ public sealed class TicketMenu
             else
             {
                 var completedInId = await AdminResolveStatusIdAsync(context, CheckInEntityType, CheckInStatusCompleted, ct);
-                // Reparación de consistencia:
-                // si existe un CheckIn "Completado" para un tiquete, el tiquete debe quedar en estado "Check-in realizado".
-                // Esto arregla datos históricos creados antes del fix que actualizaba Ticket.IdStatus.
+                // Consulta pura (sin efectos secundarios):
+                // solo tiquetes en estado "Check-in realizado" y con un registro de CheckIn "Completado" asociado.
                 var ticketRepo = new TicketRepository(context);
                 var allTicketsInSystem = (await new GetAllTicketsUseCase(ticketRepo).ExecuteAsync(ct)).ToList();
                 var checkInRepo = new CheckInRepository(context);
                 var allCheckInsInSystem = (await new GetAllCheckInsUseCase(checkInRepo).ExecuteAsync(ct))
                     .Where(c => c.IdStatus == completedInId)
                     .ToList();
-
-                // Si hay datos históricos con IdSeat inválido, intentar repararlos usando los asientos de la reserva.
-                var badSeatCheckIns = allCheckInsInSystem.Where(c => c.IdSeat <= 0).ToList();
-                if (badSeatCheckIns.Count > 0)
-                {
-                    var linksAll = (await new GetAllBookingCustomersUseCase(new BookingCustomerRepository(context)).ExecuteAsync(ct))
-                        .ToList();
-                    var linkByBooking = linksAll.GroupBy(l => l.IdBooking).ToDictionary(g => g.Key, g => g.ToList());
-                    var ticketById = allTicketsInSystem.ToDictionary(t => t.Id.Value);
-                    var updateCheckInUc = new UpdateCheckInUseCase(checkInRepo);
-                    foreach (var cin in badSeatCheckIns)
-                    {
-                        if (!ticketById.TryGetValue(cin.IdTicket, out var t))
-                            continue;
-                        if (!linkByBooking.TryGetValue(t.IdBooking, out var lks) || lks.Count == 0)
-                            continue;
-                        var chosen = lks.FirstOrDefault(x => x.IsPrimary) ?? lks[0];
-                        await updateCheckInUc.ExecuteAsync(
-                            cin.Id.Value,
-                            cin.Date.Value,
-                            cin.IdTicket,
-                            cin.IdChannel,
-                            chosen.IdSeat,
-                            cin.IdUser,
-                            cin.IdStatus,
-                            ct);
-                    }
-                    await context.SaveChangesAsync(ct);
-
-                    // refrescar lista en memoria para la consulta que sigue
-                    allCheckInsInSystem = (await new GetAllCheckInsUseCase(checkInRepo).ExecuteAsync(ct))
-                        .Where(c => c.IdStatus == completedInId)
-                        .ToList();
-                }
-                var idsWithCompletedCheckIn = allCheckInsInSystem.Select(c => c.IdTicket).Distinct().ToHashSet();
-                var toBackfill = allTicketsInSystem
-                    .Where(t => idsWithCompletedCheckIn.Contains(t.Id.Value) && t.IdStatus != stCheckIn.Id.Value)
-                    .ToList();
-                if (toBackfill.Count > 0)
-                {
-                    var updateUc = new UpdateTicketUseCase(ticketRepo);
-                    foreach (var t in toBackfill)
-                    {
-                        await updateUc.ExecuteAsync(
-                            t.Id.Value,
-                            t.Code.Value,
-                            t.IssueDate.Value,
-                            t.IdBooking,
-                            t.IdFare,
-                            stCheckIn.Id.Value,
-                            ct);
-                    }
-                    await context.SaveChangesAsync(ct);
-                }
 
                 var allTickets = allTicketsInSystem
                     .Where(t => t.IdStatus == stCheckIn.Id.Value)
@@ -2098,7 +2043,7 @@ public sealed class TicketMenu
                         var dep = fl.Date.Value.ToDateTime(fl.DepartureTime.Value);
                         var cin = checkIns
                             .FirstOrDefault(c => c.IdTicket == t.Id.Value && c.IdStatus == completedInId);
-                        if (cin is null) continue;
+                        if (cin is null || cin.IdSeat <= 0) continue;
                         var link = links.FirstOrDefault(l => l.IdBooking == t.IdBooking && l.IdSeat == cin.IdSeat);
                         if (link is null) continue;
                         var p = await personRepo.GetByIdAsync(PersonIdVo.Create(link.IdPerson), ct);

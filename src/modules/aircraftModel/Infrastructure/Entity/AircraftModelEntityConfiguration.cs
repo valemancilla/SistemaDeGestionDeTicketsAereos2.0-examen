@@ -30,6 +30,11 @@ public sealed class AircraftModelEntityConfiguration : IEntityTypeConfiguration<
             .HasColumnType("varchar(50)")
             .IsRequired();
 
+        // El nombre del modelo de aeronave debe ser único en el sistema
+        builder.HasIndex(x => x.Model)
+            .IsUnique()
+            .HasDatabaseName("UQ_AircraftModel_Model");
+
         // Relación: un modelo pertenece a un fabricante, un fabricante tiene muchos modelos
         // Restrict: no se puede borrar un fabricante si tiene modelos registrados
         builder.HasOne(x => x.Manufacturer)

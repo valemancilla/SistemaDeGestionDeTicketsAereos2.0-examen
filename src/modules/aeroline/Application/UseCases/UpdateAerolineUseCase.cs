@@ -16,6 +16,15 @@ public sealed class UpdateAerolineUseCase
     {
         var existing = await _repo.GetByIdAsync(AirlineId.Create(id), ct);
         if (existing is null) throw new KeyNotFoundException($"Aeroline with id '{id}' was not found.");
+
+        var existingByName = await _repo.GetByNameAsync(name, ct);
+        if (existingByName is not null && existingByName.Id.Value != id)
+            throw new InvalidOperationException($"Aeroline with name '{name}' already exists.");
+
+        var existingByIata = await _repo.GetByIataCodeAsync(iataCode, ct);
+        if (existingByIata is not null && existingByIata.Id.Value != id)
+            throw new InvalidOperationException($"Aeroline with IATA code '{iataCode}' already exists.");
+
         var updated = Aeroline.Create(id, name, iataCode, idCountry, active);
         await _repo.UpdateAsync(updated, ct);
         return updated;

@@ -13,6 +13,9 @@ public interface IAirlineRepository
     // Busca una aerolínea por su código IATA (útil para verificar unicidad)
     Task<Aeroline?> GetByIataCodeAsync(string iataCode, CancellationToken ct = default);
 
+    // Busca una aerolínea por su nombre (útil para verificar unicidad)
+    Task<Aeroline?> GetByNameAsync(string name, CancellationToken ct = default);
+
     // Retorna todas las aerolíneas registradas en el sistema
     Task<IReadOnlyList<Aeroline>> ListAsync(CancellationToken ct = default);
 

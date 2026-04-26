@@ -62,21 +62,8 @@ namespace SistemaDeGestionDeTicketsAereos.src.modules.ticket.UI;
 
 public static class ClientPnrCheckInMenu
 {
-    private const string BookingEntityType = "Booking";
-    private const string CheckInEntityType = "CheckIn";
-    private const string TicketEntityType = "Ticket";
-    private const string FlightEntityType = "Flight";
-    private const string PaymentEntityType = "Payment";
-
-    private const string BookingStatusPaid = "Pagada";
-    private const string CheckInStatusCompleted = "Completado";
-    private const string PaymentStatusApproved = "Aprobado";
-    private const string TicketStatusIssued = "Emitido";
-    private const string TicketStatusActive = "Activo";
-    private const string TicketStatusCheckInDone = "Check-in realizado";
-
-    private static readonly TimeSpan CheckInOpensBeforeDeparture = TimeSpan.FromHours(24);
-    private static readonly TimeSpan CheckInClosesBeforeDeparture = TimeSpan.FromMinutes(45);
+    // Nota: la ventana horaria y validaciones del examen viven en ExamCheckInService (negocio),
+    // la UI solo recolecta inputs y presenta outputs.
 
     public static async Task RunAsync(CancellationToken ct = default)
     {
@@ -210,6 +197,8 @@ public static class ClientPnrCheckInMenu
                 .Border(BoxBorder.Rounded));
             AnsiConsole.MarkupLine(
                 "[dim]Nota (Examen 3): ruta, salida y puerta provienen del vuelo; el asiento figura en la reserva del pasajero y en el mapa de asientos del vuelo, no como columna del vuelo.[/]");
+            AnsiConsole.MarkupLine(
+                "[green]Pago validado correctamente[/] [dim](Pagado = Reserva «Pagada» + Pago «Aprobado»).[/]");
 
             int seatId = info.CurrentSeatId;
             string seatLabel = seatId.ToString(CultureInfo.InvariantCulture);
