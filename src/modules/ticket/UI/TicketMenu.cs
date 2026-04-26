@@ -926,8 +926,10 @@ public sealed class TicketMenu
         var statuses = await new GetAllSystemStatusesUseCase(new SystemStatusRepository(context)).ExecuteAsync(ct);
         var statusName = statuses.FirstOrDefault(s => s.Id.Value == bp.IdStatus)?.Name.Value ?? bp.IdStatus.ToString();
         var estadoExtra = string.Equals(statusName, "Generado", StringComparison.OrdinalIgnoreCase)
-            ? "\n[bold]Estado operativo:[/] Activo (válido para presentarse en puerta)"
-            : string.Empty;
+            ? "\n[dim]Ciclo Examen 3:[/] [bold]Generado[/] al check-in. El pase pasa a [bold]Activo[/] al registrar abordaje (menú admin)."
+            : string.Equals(statusName, "Activo", StringComparison.OrdinalIgnoreCase)
+                ? "\n[dim]Ciclo Examen 3:[/] pase [bold]Activo[/] (abordaje registrado o validación en puerta)."
+                : string.Empty;
 
         var paxLine = string.IsNullOrWhiteSpace(bp.PassengerFullName)
             ? string.Empty
@@ -2084,7 +2086,7 @@ public sealed class TicketMenu
                     var seatLabels = (await new GetAllSeatsUseCase(new SeatRepository(context)).ExecuteAsync(ct))
                         .ToDictionary(s => s.Id.Value, s => s.Number.Value);
                     var personRepo = new PersonRepository(context);
-                    var rows = new List<(string name, string doc, string seat, string tcode, string st, string flStr, DateTime dep, DateTime checkInAt)>();
+                    var rows = new List<(string name, string doc, string seat, string tcode, string st, string flStr, DateTime dep, DateTime checkInAt, string checkInPax)>();
                     foreach (var t in allTickets)
                     {
                         if (!bookings.TryGetValue(t.IdBooking, out var bk)) continue;
@@ -2106,7 +2108,11 @@ public sealed class TicketMenu
                         var routeL = await BuildRouteLabelForFlightAsync(context, fl.IdRoute, ct);
                         var flStr = $"{fl.Number.Value} · {routeL} · {fl.Date.Value:yyyy-MM-dd} {fl.DepartureTime.Value:hh\\:mm}";
                         var cinAt = cin.Date.Value;
-                        rows.Add((pName, pDoc, seatL, t.Code.Value, TicketStatusCheckInDone, flStr, dep, cinAt));
+                        var checkInPax = sts.FirstOrDefault(s =>
+                            s.Id.Value == cin.IdStatus &&
+                            string.Equals(s.EntityType.Value, CheckInEntityType, StringComparison.OrdinalIgnoreCase))?.Name
+                            .Value ?? "—";
+                        rows.Add((pName, pDoc, seatL, t.Code.Value, TicketStatusCheckInDone, flStr, dep, cinAt, checkInPax));
                     }
 
                     if (rows.Count == 0)
@@ -2120,7 +2126,7 @@ public sealed class TicketMenu
                                     "Fecha/hora de salida del vuelo",
                                     "Número de asiento (texto)",
                                     "Fecha/hora de check-in completado"));
-                        List<(string name, string doc, string seat, string tcode, string st, string flStr, DateTime dep, DateTime checkInAt)> ordered;
+                        List<(string name, string doc, string seat, string tcode, string st, string flStr, DateTime dep, DateTime checkInAt, string checkInPax)> ordered;
                         if (string.Equals(mode, "Número de asiento (texto)", StringComparison.Ordinal))
                             ordered = rows.OrderBy(x => x.seat, StringComparer.OrdinalIgnoreCase).ToList();
                         else if (string.Equals(mode, "Fecha/hora de check-in completado", StringComparison.Ordinal))
@@ -2151,12 +2157,16 @@ public sealed class TicketMenu
                         {
                             AnsiConsole.WriteLine();
                             AnsiConsole.WriteLine("=== PASAJEROS LISTOS PARA ABORDAR ===");
+                            AnsiConsole.MarkupLine(
+                                "[dim]Estado del pasajero (trámite): columna «Check-in» = estado del registro de check-in; " +
+                                "«Estado tiquete» = Check-in realizado.[/]\n");
                             var table = new Table().Border(TableBorder.Rounded);
                             table.AddColumn("Nombre");
                             table.AddColumn("Documento");
                             table.AddColumn("Asiento");
                             table.AddColumn("Cód. tiquete");
                             table.AddColumn("Vuelo / ruta / salida");
+                            table.AddColumn("Check-in (pasajero)");
                             table.AddColumn("Estado tiquete");
                             foreach (var r in ordered)
                             {
@@ -2166,6 +2176,7 @@ public sealed class TicketMenu
                                     Markup.Escape(r.seat),
                                     Markup.Escape(r.tcode),
                                     Markup.Escape(r.flStr),
+                                    Markup.Escape(r.checkInPax),
                                     Markup.Escape(r.st));
                             }
                             AnsiConsole.Write(table);

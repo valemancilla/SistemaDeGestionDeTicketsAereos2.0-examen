@@ -1,5 +1,6 @@
 // =============================================================================
 // EXAMEN 3 — UI de "Realizar check-in" (cliente).
+// - Consistencia enunciado: vuelo vs asiento, pagos, ciclo pase, sin cambiar reglas (ExamCheckInService).
 // - Entrada: código de tiquete, PNR o ID numérico de reserva (+ apellido si aplica).
 // - Delegación: ExamCheckInService (PrepareAsync → posible elección de pasajero →
 //   panel de datos → asiento si falta → CompleteAsync).
@@ -192,16 +193,23 @@ public static class ClientPnrCheckInMenu
 
             var info = prepared.Info;
 
+            var gateVuelo = string.IsNullOrWhiteSpace(info.BoardingGate) ? "—" : info.BoardingGate;
+            var asientoLinea = prepared.SeatRequired
+                ? "Sin asiento aún: elegí uno en el paso siguiente (plazas del vuelo vía reserva)."
+                : $"Asiento asignado al pasajero en la reserva (id {info.CurrentSeatId}).";
             AnsiConsole.Write(new Panel(
                     $"[bold]Nombre del pasajero:[/] {Markup.Escape(info.PassengerFullName)}\n" +
                     $"[bold]Documento del pasajero:[/] {Markup.Escape(info.PassengerDocument)}\n" +
-                    $"[bold]Código del vuelo:[/] {Markup.Escape(info.FlightCode)}\n" +
-                    $"[bold]Origen:[/] {Markup.Escape(info.OriginLabel)}\n" +
-                    $"[bold]Destino:[/] {Markup.Escape(info.DestinationLabel)}\n" +
-                    $"[bold]Fecha y hora de salida:[/] {info.FlightDate:yyyy-MM-dd} {info.FlightDepartureTime:hh\\:mm}\n" +
+                    $"[bold]Código del vuelo:[/] {Markup.Escape(info.FlightCode)} [dim](itinerario / vuelo)[/]\n" +
+                    $"[bold]Origen:[/] {Markup.Escape(info.OriginLabel)} [dim]·[/] [bold]Destino:[/] {Markup.Escape(info.DestinationLabel)} [dim](ruta del vuelo)[/]\n" +
+                    $"[bold]Fecha y hora de salida:[/] {info.FlightDate:yyyy-MM-dd} {info.FlightDepartureTime:hh\\:mm} [dim](programación del vuelo)[/]\n" +
+                    $"[bold]Puerta de embarque:[/] {Markup.Escape(gateVuelo)} [dim](dato del vuelo)[/]\n" +
+                    $"[bold]Asiento (reserva + plazas del vuelo):[/] {Markup.Escape(asientoLinea)}\n" +
                     $"[bold]Estado actual del tiquete:[/] {Markup.Escape(info.TicketStatusName)}")
                 .Header("[cyan]Información del tiquete[/]")
                 .Border(BoxBorder.Rounded));
+            AnsiConsole.MarkupLine(
+                "[dim]Nota (Examen 3): ruta, salida y puerta provienen del vuelo; el asiento figura en la reserva del pasajero y en el mapa de asientos del vuelo, no como columna del vuelo.[/]");
 
             int seatId = info.CurrentSeatId;
             string seatLabel = seatId.ToString(CultureInfo.InvariantCulture);

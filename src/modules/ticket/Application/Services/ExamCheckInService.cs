@@ -303,11 +303,22 @@ public sealed class ExamCheckInService
         if (effectiveTicketStatusId != issuedId)
             return new PrepareResult(false, "Tiquete no emitido.", null, false, Array.Empty<(int, string)>());
 
+        // Examen 3: el enunciado pide pago "pagado"; en este dominio = reserva «Pagada» + movimiento de pago aprobado.
         if (booking.IdStatus != bookingPaidId)
-            return new PrepareResult(false, "Pago pendiente.", null, false, Array.Empty<(int, string)>());
+            return new PrepareResult(
+                false,
+                "Pago pendiente: la reserva no está en estado «Pagada».",
+                null,
+                false,
+                Array.Empty<(int, string)>());
 
         if (!hasApprovedPayment)
-            return new PrepareResult(false, "Pago pendiente.", null, false, Array.Empty<(int, string)>());
+            return new PrepareResult(
+                false,
+                "Pago pendiente: no hay un pago «Aprobado» registrado para esta reserva.",
+                null,
+                false,
+                Array.Empty<(int, string)>());
 
         var departureAtLocal = flight.Date.Value.ToDateTime(flight.DepartureTime.Value);
         var nowLocal = DateTime.Now;
@@ -412,11 +423,11 @@ public sealed class ExamCheckInService
                 ct);
         }
 
-        // Examen 3: trazabilidad del cambio de estado del tiquete y del trámite del pasajero (registro CheckIn ya creado arriba).
+        // Examen 3: trazabilidad de reserva pagada + pago aprobado, tiquete, trámite del pasajero (CheckIn) y pase Generado.
         await new CreateTicketStatusHistoryUseCase(new TicketStatusHistoryRepository(context))
             .ExecuteAsync(
                 DateTime.Now,
-                "Check-in: pasajero en condición de embarque (registro de check-in completado). Tiquete: Check-in realizado. Pase: Generado en sistema.",
+                "Examen 3: reserva «Pagada» y pago «Aprobado» verificados. Pasajero: CheckIn «Completado» en sistema. Tiquete: Check-in realizado. Pase de abordar: «Generado» (pasa a «Activo» al registrar abordaje).",
                 req.Info.TicketId,
                 checkInDoneId,
                 req.SessionUserId,
