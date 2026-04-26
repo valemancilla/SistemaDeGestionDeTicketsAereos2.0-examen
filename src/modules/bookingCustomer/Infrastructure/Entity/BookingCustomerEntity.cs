@@ -27,6 +27,9 @@ public class BookingCustomerEntity
     // Indica si este cliente es el titular principal de la reserva
     public bool IsPrimary { get; set; }
 
+    // Examen 3: estado explícito del pasajero para abordaje (true tras check-in exitoso)
+    public bool IsReadyToBoard { get; set; }
+
     // Fecha y hora en que se asoció el cliente a la reserva
     public DateTime AssociationDate { get; set; }
 

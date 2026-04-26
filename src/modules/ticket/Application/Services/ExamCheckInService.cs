@@ -382,6 +382,7 @@ public sealed class ExamCheckInService
         int checkInDoneId = RequireStatusId(statuses, TicketEntityType, TicketStatusCheckInDone);
         int checkInCompletedId = RequireStatusId(statuses, CheckInEntityType, CheckInStatusCompleted);
         int bpGeneratedId = RequireStatusId(statuses, "BoardingPass", BoardingPassStatusGenerated);
+        int bpActiveId = RequireStatusId(statuses, "BoardingPass", "Activo");
 
         // Asiento (si cambia, aplicar disponibilidad + vinculo booking-customer)
         if (req.Info.CurrentSeatId != req.SeatId)
@@ -390,6 +391,23 @@ public sealed class ExamCheckInService
             var legBc = await bcRepo.GetByIdAsync(BookingCustomerId.Create(req.Info.BookingCustomerId), ct)
                 ?? throw new InvalidOperationException("No se encontró el registro de pasajero en la reserva.");
             await ApplySeatChangeAsync(context, legBc, req.Info.FlightId, req.Info.CurrentSeatId, req.SeatId, ct);
+        }
+
+        // Examen 3: estado explícito del pasajero dentro de su reserva tras check-in exitoso.
+        {
+            var bcRepo = new BookingCustomerRepository(context);
+            var legBc = await bcRepo.GetByIdAsync(BookingCustomerId.Create(req.Info.BookingCustomerId), ct)
+                ?? throw new InvalidOperationException("No se encontró el registro de pasajero en la reserva.");
+            await new UpdateBookingCustomerUseCase(bcRepo).ExecuteAsync(
+                legBc.Id.Value,
+                legBc.AssociationDate.Value,
+                legBc.IdBooking,
+                legBc.IdUser,
+                legBc.IdPerson,
+                req.SeatId,
+                legBc.IsPrimary,
+                isReadyToBoard: true,
+                ct: ct);
         }
 
         const int webChannelId = 1;
@@ -421,13 +439,31 @@ public sealed class ExamCheckInService
                 bpGeneratedId,
                 passengerName,
                 ct);
+
+            // Examen 3 literal: marcar el pase como Generado y Activo.
+            // El modelo persiste un solo IdStatus; por eso se crea como Generado y se promueve a Activo inmediatamente.
+            var created = await new GetBoardingPassByTicketIdUseCase(bpRepo).ExecuteAsync(req.Info.TicketId, ct);
+            if (created is not null && created.IdStatus != bpActiveId)
+            {
+                await new UpdateBoardingPassUseCase(bpRepo).ExecuteAsync(
+                    created.Id.Value,
+                    created.Code.Value,
+                    created.IdTicket,
+                    created.IdSeat,
+                    created.Gate.Value,
+                    created.BoardingTime,
+                    created.CreatedAt,
+                    bpActiveId,
+                    created.PassengerFullName,
+                    ct);
+            }
         }
 
-        // Examen 3: trazabilidad de reserva pagada + pago aprobado, tiquete, trámite del pasajero (CheckIn) y pase Generado.
+        // Examen 3: trazabilidad de reserva pagada + pago aprobado, tiquete, estado del pasajero (BookingCustomer) y pase.
         await new CreateTicketStatusHistoryUseCase(new TicketStatusHistoryRepository(context))
             .ExecuteAsync(
                 DateTime.Now,
-                "Examen 3: reserva «Pagada» y pago «Aprobado» verificados. Pasajero: CheckIn «Completado» en sistema. Tiquete: Check-in realizado. Pase de abordar: «Generado» (pasa a «Activo» al registrar abordaje).",
+                "Examen 3: reserva «Pagada» y pago «Aprobado» verificados. Pasajero: listo para abordar (BookingCustomer.IsReadyToBoard=true) y CheckIn «Completado». Tiquete: Check-in realizado. Pase: Generado→Activo (promoción inmediata).",
                 req.Info.TicketId,
                 checkInDoneId,
                 req.SessionUserId,

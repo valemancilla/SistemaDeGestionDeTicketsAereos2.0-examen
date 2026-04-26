@@ -11,11 +11,20 @@ public sealed class UpdateBookingCustomerUseCase
     public UpdateBookingCustomerUseCase(IBookingCustomerRepository repo) => _repo = repo;
 
     // Verifica que el pasajero exista antes de actualizarlo — recrea el agregado con los nuevos datos
-    public async Task<BookingCustomer> ExecuteAsync(int id, DateTime associationDate, int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary, CancellationToken ct = default)
+    public async Task<BookingCustomer> ExecuteAsync(
+        int id,
+        DateTime associationDate,
+        int idBooking,
+        int idUser,
+        int idPerson,
+        int idSeat,
+        bool isPrimary,
+        CancellationToken ct = default,
+        bool isReadyToBoard = false)
     {
         var existing = await _repo.GetByIdAsync(BookingCustomerId.Create(id), ct);
         if (existing is null) throw new KeyNotFoundException($"BookingCustomer with id '{id}' was not found.");
-        var updated = BookingCustomer.Create(id, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary);
+        var updated = BookingCustomer.Create(id, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary, isReadyToBoard);
         await _repo.UpdateAsync(updated, ct);
         return updated;
     }

@@ -27,9 +27,12 @@ public class BookingCustomer
     // Indica si este pasajero es el titular principal de la reserva
     public bool IsPrimary { get; private set; }
 
+    // Estado explícito del pasajero dentro de la reserva: listo para abordar tras check-in (Examen 3)
+    public bool IsReadyToBoard { get; private set; }
+
     // Constructor privado: solo se crea a través del método Create
     private BookingCustomer(BookingCustomerId id, BookingCustomerAssociationDate associationDate,
-        int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary)
+        int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary, bool isReadyToBoard)
     {
         Id = id;
         AssociationDate = associationDate;
@@ -38,11 +41,18 @@ public class BookingCustomer
         IdPerson = idPerson;
         IdSeat = idSeat;
         IsPrimary = isPrimary;
+        IsReadyToBoard = isReadyToBoard;
     }
 
     // Método de fábrica para crear o reconstruir un BookingCustomer desde la base de datos
     public static BookingCustomer Create(int id, DateTime associationDate,
         int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary)
+    {
+        return Create(id, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary, isReadyToBoard: false);
+    }
+
+    public static BookingCustomer Create(int id, DateTime associationDate,
+        int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary, bool isReadyToBoard)
     {
         // Regla: el pasajero debe estar asociado a una reserva válida
         if (idBooking <= 0)
@@ -67,11 +77,15 @@ public class BookingCustomer
             idUser,
             idPerson,
             idSeat,
-            isPrimary
+            isPrimary,
+            isReadyToBoard
         );
     }
 
     // Método de fábrica para crear un registro nuevo (ID = 0, la BD lo asigna después)
     public static BookingCustomer CreateNew(DateTime associationDate, int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary)
-        => Create(0, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary);
+        => Create(0, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary, isReadyToBoard: false);
+
+    public static BookingCustomer CreateNew(DateTime associationDate, int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary, bool isReadyToBoard)
+        => Create(0, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary, isReadyToBoard);
 }

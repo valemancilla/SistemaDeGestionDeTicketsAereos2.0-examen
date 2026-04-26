@@ -21,9 +21,17 @@ public sealed class BookingCustomerService : IBookingCustomerService
     }
 
     // Asocia el pasajero a la reserva y lo persiste inmediatamente
-    public async Task<BookingCustomer> CreateAsync(DateTime associationDate, int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary, CancellationToken cancellationToken = default)
+    public async Task<BookingCustomer> CreateAsync(
+        DateTime associationDate,
+        int idBooking,
+        int idUser,
+        int idPerson,
+        int idSeat,
+        bool isPrimary,
+        CancellationToken cancellationToken = default,
+        bool isReadyToBoard = false)
     {
-        var entity = BookingCustomer.CreateNew(associationDate, idBooking, idUser, idPerson, idSeat, isPrimary);
+        var entity = BookingCustomer.CreateNew(associationDate, idBooking, idUser, idPerson, idSeat, isPrimary, isReadyToBoard);
         await _bookingCustomerRepository.AddAsync(entity, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return entity;
@@ -42,14 +50,23 @@ public sealed class BookingCustomerService : IBookingCustomerService
     }
 
     // Actualiza un pasajero verificando que exista, luego recrea el agregado con los nuevos datos
-    public async Task<BookingCustomer> UpdateAsync(int id, DateTime associationDate, int idBooking, int idUser, int idPerson, int idSeat, bool isPrimary, CancellationToken cancellationToken = default)
+    public async Task<BookingCustomer> UpdateAsync(
+        int id,
+        DateTime associationDate,
+        int idBooking,
+        int idUser,
+        int idPerson,
+        int idSeat,
+        bool isPrimary,
+        CancellationToken cancellationToken = default,
+        bool isReadyToBoard = false)
     {
         var bookingCustomerId = BookingCustomerId.Create(id);
         var existing = await _bookingCustomerRepository.GetByIdAsync(bookingCustomerId, cancellationToken);
         if (existing is null)
             throw new KeyNotFoundException($"BookingCustomer with id '{id}' was not found.");
 
-        var updated = BookingCustomer.Create(id, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary);
+        var updated = BookingCustomer.Create(id, associationDate, idBooking, idUser, idPerson, idSeat, isPrimary, isReadyToBoard);
         await _bookingCustomerRepository.UpdateAsync(updated, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return updated;
